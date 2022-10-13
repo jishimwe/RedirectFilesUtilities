@@ -46,6 +46,12 @@ namespace RedirectFilesUtilities
             //return null;
         }
 
+        private bool CheckoutFile(string filepath)
+        {
+
+            return false;
+        }
+
         private Branch CheckoutBranch(string bracnhName)
         {
             var branch = repository.Branches[bracnhName];
