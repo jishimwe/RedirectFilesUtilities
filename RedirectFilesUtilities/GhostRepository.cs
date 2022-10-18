@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using LibGit2Sharp;
+using LibGit2Sharp.Handlers;
+using Index = LibGit2Sharp.Index;
 
 namespace RedirectFilesUtilities
 {
@@ -24,6 +26,10 @@ namespace RedirectFilesUtilities
             Console.WriteLine("Repository cloned");
             CheckoutFile(@"app/src/main/AndroidManifest.xml");
             Console.WriteLine(@"app/src/main/AndroidManifest.xml checked out?");
+            CommitToRepository(@"C:\Users\test\Documents\GhostRepo\PlayMusic\app\src\main\AndroidManifest.xml", @"app/src/main/AndroidManifest.xml");
+            PushFile();
+            Console.WriteLine(@"app/src/main/AndroidManifest.xml pushed out?");
+			PrintGitStatus();
         }
 
         private Repository CloneGhostBranchRepository(string repoURL, string destPath)
@@ -31,7 +37,7 @@ namespace RedirectFilesUtilities
             var co = new CloneOptions
             {
                 BranchName = defaultBranchName,
-                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = gitUser, Password = "" }
+                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = gitUser, Password = "ykahqu8Z2fFY5Tn" }
             };
             co.Checkout = false;
             Repository.Clone(repoURL, destPath, co);
@@ -70,15 +76,71 @@ namespace RedirectFilesUtilities
             return Commands.Checkout(repository, branch);
         }
 
-		private Commit CommitToRepository(string filepath)
+		private Commit CommitToRepository(string localFP, string remoteFP)
 		{
-            Signature author = new Signature(gitUser, gitMail, DateTime.Now);
-            Signature commiter = author;
-            CommitOptions commitOptions = new CommitOptions(); 
-            CommitFilter commitFilter = new CommitFilter();
-            commitOptions.AllowEmptyCommit = true;
-            Commit commit = repository.Commit("test commit from Visual Studio", author, commiter);
+			using (StreamWriter w = File.AppendText(localFP))
+			{
+				w.Write("\n<!-- Added with visual studio -->");
+			}
+
+            repository.Index.Add(remoteFP);
+            repository.Index.Write();
+
+            var status = repository.RetrieveStatus(new StatusOptions());
+
+            //Commands.Remove(repository, "./", false);
+            RemoveFromStaging();
+            Commands.Stage(repository, remoteFP);
+            Console.WriteLine(remoteFP + " staged \n");
+            RemoveFromStaging();
+
+			Signature author = new Signature(gitUser, gitMail, DateTime.Now);
+            Signature committer = author;
+            //CommitOptions commitOptions = new CommitOptions();
+            //CommitFilter commitFilter = new CommitFilter();
+            //commitOptions.AllowEmptyCommit = true;
+            Commit commit = repository.Commit("test commit from Visual Studio", author, committer);
 			return commit;
 		}
-	}
+
+		private void PrintGitStatus()
+		{
+            Console.WriteLine(repository.Commits);
+			foreach (var item in repository.RetrieveStatus(new StatusOptions()))
+			{
+				Console.WriteLine(item.FilePath);
+			}
+		}
+
+		private void RemoveFromStaging()
+		{
+			foreach (var item in repository.RetrieveStatus(new StatusOptions()))
+			{
+				if ((item.State & FileStatus.ModifiedInIndex) != 0)
+					continue;
+				//Commands.Remove(repository, item.FilePath, true);
+                Commands.Unstage(repository, item.FilePath);
+				//repository.Index.Remove(item.FilePath);
+				Console.WriteLine(item.FilePath + "\t" + item.State + "\t removed from staging");
+			}
+            Console.WriteLine();
+		}
+
+        private void PushFile()
+        {
+            Remote remote = repository.Network.Remotes[remoteDefaultName];
+            var opt = new PushOptions();
+            //opt.CredentialsProvider = (_url, _user, _cred) =>
+            // new DefaultCredentials();
+            opt.CredentialsProvider = (_url, _user, _cred) =>
+                new UsernamePasswordCredentials { Username = gitUser, Password = "ykahqu8Z2fFY5Tn" };
+            
+            repository.Network.Push(remote, @"refs/heads/master", opt);
+        }
+
+        //private void PushFile()
+        //{
+        //          PushOptions opt = new PushOptions();
+        //}
+    }
 }
