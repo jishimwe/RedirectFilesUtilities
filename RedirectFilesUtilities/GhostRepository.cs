@@ -26,7 +26,7 @@ namespace RedirectFilesUtilities
             Console.WriteLine("Repository cloned");
             CheckoutFile(@"app/src/main/AndroidManifest.xml");
             Console.WriteLine(@"app/src/main/AndroidManifest.xml checked out?");
-            CommitToRepository(@"C:\Users\test\Documents\GhostRepo\PlayMusic\app\src\main\AndroidManifest.xml", @"app/src/main/AndroidManifest.xml");
+            CommitToRepository(@"C:\Users\ishim\Documents\GhostRepo\PlayMusic\app\src\main\AndroidManifest.xml", @"app/src/main/AndroidManifest.xml");
             PushFile();
             Console.WriteLine(@"app/src/main/AndroidManifest.xml pushed out?");
 			PrintGitStatus();
@@ -37,7 +37,7 @@ namespace RedirectFilesUtilities
             var co = new CloneOptions
             {
                 BranchName = defaultBranchName,
-                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = gitUser, Password = "ykahqu8Z2fFY5Tn" }
+                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = gitUser, Password = "" }
             };
             co.Checkout = false;
             Repository.Clone(repoURL, destPath, co);
@@ -133,7 +133,7 @@ namespace RedirectFilesUtilities
             //opt.CredentialsProvider = (_url, _user, _cred) =>
             // new DefaultCredentials();
             opt.CredentialsProvider = (_url, _user, _cred) =>
-                new UsernamePasswordCredentials { Username = gitUser, Password = "ykahqu8Z2fFY5Tn" };
+                new UsernamePasswordCredentials { Username = gitUser, Password = "" };
             
             repository.Network.Push(remote, @"refs/heads/master", opt);
         }
