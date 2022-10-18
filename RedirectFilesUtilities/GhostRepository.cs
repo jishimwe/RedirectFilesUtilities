@@ -4,8 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
-using Index = LibGit2Sharp.Index;
 
 namespace RedirectFilesUtilities
 {
@@ -26,10 +24,13 @@ namespace RedirectFilesUtilities
             Console.WriteLine("Repository cloned");
             CheckoutFile(@"app/src/main/AndroidManifest.xml");
             Console.WriteLine(@"app/src/main/AndroidManifest.xml checked out?");
+<<<<<<< HEAD
             CommitToRepository(@"C:\Users\ishim\Documents\GhostRepo\PlayMusic\app\src\main\AndroidManifest.xml", @"app/src/main/AndroidManifest.xml");
             PushFile();
             Console.WriteLine(@"app/src/main/AndroidManifest.xml pushed out?");
 			PrintGitStatus();
+=======
+>>>>>>> parent of 0bb06d6 (implemented commit on one file; implementing push on one file)
         }
 
         private Repository CloneGhostBranchRepository(string repoURL, string destPath)
@@ -76,32 +77,17 @@ namespace RedirectFilesUtilities
             return Commands.Checkout(repository, branch);
         }
 
-		private Commit CommitToRepository(string localFP, string remoteFP)
+		private Commit CommitToRepository(string filepath)
 		{
-			using (StreamWriter w = File.AppendText(localFP))
-			{
-				w.Write("\n<!-- Added with visual studio -->");
-			}
-
-            repository.Index.Add(remoteFP);
-            repository.Index.Write();
-
-            var status = repository.RetrieveStatus(new StatusOptions());
-
-            //Commands.Remove(repository, "./", false);
-            RemoveFromStaging();
-            Commands.Stage(repository, remoteFP);
-            Console.WriteLine(remoteFP + " staged \n");
-            RemoveFromStaging();
-
-			Signature author = new Signature(gitUser, gitMail, DateTime.Now);
-            Signature committer = author;
-            //CommitOptions commitOptions = new CommitOptions();
-            //CommitFilter commitFilter = new CommitFilter();
-            //commitOptions.AllowEmptyCommit = true;
-            Commit commit = repository.Commit("test commit from Visual Studio", author, committer);
+            Signature author = new Signature(gitUser, gitMail, DateTime.Now);
+            Signature commiter = author;
+            CommitOptions commitOptions = new CommitOptions(); 
+            CommitFilter commitFilter = new CommitFilter();
+            commitOptions.AllowEmptyCommit = true;
+            Commit commit = repository.Commit("test commit from Visual Studio", author, commiter);
 			return commit;
 		}
+<<<<<<< HEAD
 
 		private void PrintGitStatus()
 		{
@@ -143,4 +129,7 @@ namespace RedirectFilesUtilities
         //          PushOptions opt = new PushOptions();
         //}
     }
+=======
+	}
+>>>>>>> parent of 0bb06d6 (implemented commit on one file; implementing push on one file)
 }
