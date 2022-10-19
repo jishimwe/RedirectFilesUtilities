@@ -10,27 +10,35 @@ namespace RedirectFilesUtilities
     internal class GhostRepository
     {
         private Repository repository;
+        private string gitToken;
         private string remoteDefaultName = "origin";
         private string defaultBranchName = "master";
         private string orphanBranchName = "ghost";
         private string gitUser = "jishimwe";
         private string gitMail = "jeanpaulishimwe@gmail.com";
+        private const string gitTokenPath = @"C:\Users\ishim\Documents\TFEToken";
 
 
-        public GhostRepository(string repoURL, string destPath)
+
+		public GhostRepository(string repoURL, string destPath)
         {
             repository = CloneGhostBranchRepository(repoURL, destPath);
             //repository = CloneEmptyRepository(repoURL, destPath);
             Console.WriteLine("Repository cloned");
             CheckoutFile(@"app/src/main/AndroidManifest.xml");
             Console.WriteLine(@"app/src/main/AndroidManifest.xml checked out?");
-<<<<<<< HEAD
             CommitToRepository(@"C:\Users\ishim\Documents\GhostRepo\PlayMusic\app\src\main\AndroidManifest.xml", @"app/src/main/AndroidManifest.xml");
             PushFile();
             Console.WriteLine(@"app/src/main/AndroidManifest.xml pushed out?");
 			PrintGitStatus();
-=======
->>>>>>> parent of 0bb06d6 (implemented commit on one file; implementing push on one file)
+        }
+
+        public string GetToken(string filepath = gitTokenPath)
+        {
+            if (filepath == null || !File.Exists(filepath))
+                return "";
+            string s = File.ReadAllText(filepath);
+            return s;
         }
 
         private Repository CloneGhostBranchRepository(string repoURL, string destPath)
@@ -38,7 +46,7 @@ namespace RedirectFilesUtilities
             var co = new CloneOptions
             {
                 BranchName = defaultBranchName,
-                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = gitUser, Password = "" }
+                CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = gitUser, Password = GetToken() }
             };
             co.Checkout = false;
             Repository.Clone(repoURL, destPath, co);
@@ -77,17 +85,29 @@ namespace RedirectFilesUtilities
             return Commands.Checkout(repository, branch);
         }
 
-		private Commit CommitToRepository(string filepath)
+		private Commit CommitToRepository(string localFP, string remoteFP)
 		{
-            Signature author = new Signature(gitUser, gitMail, DateTime.Now);
-            Signature commiter = author;
-            CommitOptions commitOptions = new CommitOptions(); 
-            CommitFilter commitFilter = new CommitFilter();
-            commitOptions.AllowEmptyCommit = true;
-            Commit commit = repository.Commit("test commit from Visual Studio", author, commiter);
+			using (StreamWriter w = File.AppendText(localFP))
+			{
+				w.Write("\n<!-- Added with visual studio -->");
+                w.Close();
+			}
+			repository.Index.Add(remoteFP);
+			repository.Index.Write();
+			var status = repository.RetrieveStatus(new StatusOptions());
+			//Commands.Remove(repository, "./", false);
+			RemoveFromStaging();
+			Commands.Stage(repository, remoteFP);
+			Console.WriteLine(remoteFP + " staged \n");
+			RemoveFromStaging();
+			Signature author = new Signature(gitUser, gitMail, DateTime.Now);
+			Signature committer = author;
+			//CommitOptions commitOptions = new CommitOptions();
+			//CommitFilter commitFilter = new CommitFilter();
+			//commitOptions.AllowEmptyCommit = true;
+			Commit commit = repository.Commit("test commit from Visual Studio", author, committer);
 			return commit;
 		}
-<<<<<<< HEAD
 
 		private void PrintGitStatus()
 		{
@@ -119,17 +139,9 @@ namespace RedirectFilesUtilities
             //opt.CredentialsProvider = (_url, _user, _cred) =>
             // new DefaultCredentials();
             opt.CredentialsProvider = (_url, _user, _cred) =>
-                new UsernamePasswordCredentials { Username = gitUser, Password = "" };
+                new UsernamePasswordCredentials { Username = gitUser, Password = GetToken() };
             
             repository.Network.Push(remote, @"refs/heads/master", opt);
         }
-
-        //private void PushFile()
-        //{
-        //          PushOptions opt = new PushOptions();
-        //}
     }
-=======
-	}
->>>>>>> parent of 0bb06d6 (implemented commit on one file; implementing push on one file)
 }
