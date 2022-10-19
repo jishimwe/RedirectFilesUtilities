@@ -103,5 +103,18 @@ namespace RedirectFilesUtilities
 				"\n -r <Redir repository>: The url for the redir repository" +
 				"\n -t <Redir path>      : The path where to put the cloned redir repository");
         }
+
+        private static string OpenRedirFile()
+        {
+            Console.WriteLine("Enter the path of a redir file");
+            string filepath = Console.ReadLine();
+            if (filepath == null)
+                return "no file";
+            using (StreamReader sr = new StreamReader(filepath))
+            {
+                string read = sr.ReadToEnd();
+                return read ?? "no data";
+            }
+        }
     }
 }
