@@ -10,7 +10,6 @@ namespace RedirectFilesUtilities
     internal class GhostRepository
     {
         private Repository repository;
-        private string gitToken;
         private string remoteDefaultName = "origin";
         private string defaultBranchName = "master";
         private string orphanBranchName = "ghost";
@@ -20,7 +19,12 @@ namespace RedirectFilesUtilities
 
 
 
-		public GhostRepository(string repoURL, string destPath)
+        public GhostRepository(string repoURL, string destPath, bool rdr = false)
+        {
+            this.repository = CloneGhostBranchRepository(repoURL, destPath, rdr);
+        }
+
+		public void GhostRepositoryDefault(string repoURL, string destPath)
         {
             repository = CloneGhostBranchRepository(repoURL, destPath);
             //repository = CloneEmptyRepository(repoURL, destPath);
@@ -33,7 +37,7 @@ namespace RedirectFilesUtilities
 			PrintGitStatus();
         }
 
-        public string GetToken(string filepath = gitTokenPath)
+        private string GetToken(string filepath = gitTokenPath)
         {
             if (filepath == null || !File.Exists(filepath))
                 return "";
@@ -41,14 +45,22 @@ namespace RedirectFilesUtilities
             return s;
         }
 
-        private Repository CloneGhostBranchRepository(string repoURL, string destPath)
+        private Repository CloneGhostBranchRepository(string repoURL, string destPath, bool rdr = false)
         {
+            // If the directory already exist, we reset it. Deleting it's content careful which path you give
+            if (Directory.Exists(destPath))
+            {
+                Directory.Delete(destPath, true);
+                Directory.CreateDirectory(destPath);
+            }
+
             var co = new CloneOptions
             {
                 BranchName = defaultBranchName,
                 CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = gitUser, Password = GetToken() }
             };
-            co.Checkout = false;
+            if (!rdr)
+                co.Checkout = false;
             Repository.Clone(repoURL, destPath, co);
 
             return new Repository(destPath);
@@ -69,7 +81,7 @@ namespace RedirectFilesUtilities
             //return null;
         }
 
-        private bool CheckoutFile(string filepath)
+        public bool CheckoutFile(string filepath)
         {
             List<string> ls = new List<string>();
             ls.Add(filepath);
@@ -85,7 +97,7 @@ namespace RedirectFilesUtilities
             return Commands.Checkout(repository, branch);
         }
 
-		private Commit CommitToRepository(string localFP, string remoteFP)
+		public Commit CommitToRepository(string localFP, string remoteFP)
 		{
 			using (StreamWriter w = File.AppendText(localFP))
 			{
@@ -109,7 +121,7 @@ namespace RedirectFilesUtilities
 			return commit;
 		}
 
-		private void PrintGitStatus()
+		public void PrintGitStatus()
 		{
             Console.WriteLine(repository.Commits);
 			foreach (var item in repository.RetrieveStatus(new StatusOptions()))
@@ -132,7 +144,7 @@ namespace RedirectFilesUtilities
             Console.WriteLine();
 		}
 
-        private void PushFile()
+        public void PushFile()
         {
             Remote remote = repository.Network.Remotes[remoteDefaultName];
             var opt = new PushOptions();
