@@ -15,7 +15,7 @@ namespace RedirectFilesUtilities
         private string orphanBranchName = "ghost";
         private string gitUser = "jishimwe";
         private string gitMail = "jeanpaulishimwe@gmail.com";
-        private const string gitTokenPath = @"C:\Users\ishim\Documents\TFEToken";
+        private const string gitTokenPath = @"C:\Users\test\Documents\TFEToken";
 
 
 
@@ -31,7 +31,7 @@ namespace RedirectFilesUtilities
             Console.WriteLine("Repository cloned");
             CheckoutFile(@"app/src/main/AndroidManifest.xml");
             Console.WriteLine(@"app/src/main/AndroidManifest.xml checked out?");
-            CommitToRepository(@"C:\Users\ishim\Documents\GhostRepo\PlayMusic\app\src\main\AndroidManifest.xml", @"app/src/main/AndroidManifest.xml");
+            CommitToRepository(@"C:\Users\test\Documents\GhostRepo\PlayMusic\app\src\main\AndroidManifest.xml", @"app/src/main/AndroidManifest.xml");
             PushFile();
             Console.WriteLine(@"app/src/main/AndroidManifest.xml pushed out?");
 			PrintGitStatus();
@@ -111,13 +111,30 @@ namespace RedirectFilesUtilities
 			RemoveFromStaging();
 			Commands.Stage(repository, remoteFP);
 			Console.WriteLine(remoteFP + " staged \n");
-			RemoveFromStaging();
+			//RemoveFromStaging();
 			Signature author = new Signature(gitUser, gitMail, DateTime.Now);
 			Signature committer = author;
 			//CommitOptions commitOptions = new CommitOptions();
 			//CommitFilter commitFilter = new CommitFilter();
 			//commitOptions.AllowEmptyCommit = true;
 			Commit commit = repository.Commit("test commit from Visual Studio", author, committer);
+			return commit;
+		}
+
+		public Commit CommitToRepository(Dictionary<string, string> filepaths, string message)
+		{
+            RemoveFromStaging();
+			foreach (var filepath in filepaths)
+			{
+				repository.Index.Add(filepath.Value);
+                repository.Index.Write();
+                Commands.Stage(repository, filepath.Value);
+			}
+
+			Signature author = new Signature(gitUser, gitMail, DateTime.Now);
+			Signature committer = author;
+
+			Commit commit = repository.Commit(message, author, committer);
 			return commit;
 		}
 
