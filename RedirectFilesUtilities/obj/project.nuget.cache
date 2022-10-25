@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "xIBExhOikGUVJ6cyP2y2Netvg2VnY+TZnxhSyENNAupVPEEea/vUoXxJP6AREbqTQVPRjwi6WhaOXjzdud06VQ==",
+  "dgSpecHash": "tRIysg65wMEsdLbOGpH0r7kdoEwRT147Dg2vO+mmkBKEg8hzmCb9IxZp/ASyfTpu6SwGL5TEkm5M605qQUTafg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\test\\Documents\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj",
+  "projectFilePath": "C:\\Users\\ishim\\source\\repos\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\test\\.nuget\\packages\\libgit2sharp\\0.26.2\\libgit2sharp.0.26.2.nupkg.sha512",
-    "C:\\Users\\test\\.nuget\\packages\\libgit2sharp.nativebinaries\\2.0.306\\libgit2sharp.nativebinaries.2.0.306.nupkg.sha512"
+    "C:\\Users\\ishim\\.nuget\\packages\\libgit2sharp\\0.26.2\\libgit2sharp.0.26.2.nupkg.sha512",
+    "C:\\Users\\ishim\\.nuget\\packages\\libgit2sharp.nativebinaries\\2.0.306\\libgit2sharp.nativebinaries.2.0.306.nupkg.sha512"
   ],
   "logs": []
 }
