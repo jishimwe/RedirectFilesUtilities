@@ -5,7 +5,9 @@ using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Security;
 using LibGit2Sharp;
+using LibGit2Sharp.Handlers;
 using RedirectFilesUtilities;
 using static RedirectFilesUtilities.GhostRepository;
 using static System.Net.WebRequestMethods;
@@ -112,6 +114,51 @@ namespace RedirectFilesUtilities
 			return true;
 		}
 
+		public static bool CommitFileOrDirectory(string[] args)
+		{
+			string filepath = "", rootPath = "", username = "", message = "", email = "";
+
+			for (int i = 1; i < args.Length; i += 2)
+			{
+				switch (args[i])
+				{
+					case "-f":
+						filepath = args[i + 1];
+						break;
+					case "-d":
+						rootPath = args[i + 1];
+						break;
+					case "-u":
+						username = args[i + 1];
+						break;
+					case "-e":
+						email = args[i + 1];
+						break;
+					case "-m":
+						message = args[i + 1];
+						break;
+					default:
+						PrintUsageCommit();
+						return false;
+				}
+			}
+
+			if (InvalidArguments(filepath, rootPath, username))
+			{
+				PrintUsageCommit();
+				return false;
+			}
+
+			if (Directory.Exists(filepath))
+			{
+				CommitDirectory(filepath, rootPath, username, email, message);
+			}			else
+			{
+				CommitFile(filepath, rootPath, username, email, message);
+			}			
+			return false;
+		}
+
 		private static bool CommitFile(string[] args)
 		{
 			string filepath = "", rootPath = "", username ="", message = "", email = "";
@@ -161,9 +208,84 @@ namespace RedirectFilesUtilities
 		}
 
 		// TODO: Implement recursive directory commit
-		private static bool CommitDirectory(string[] args)
+		private static bool CommitDirectory(string dirpath, string rootPath, string username, string email, string message)
+		{
+			Repository repository = new Repository(rootPath);
+			RemoveFromStaging(repository);
+			throw new NotImplementedException();
+		}
+
+		private static bool CommitDirectoryHelper(string dirpath, Repository repository)
+		{
+			DirectoryInfo di = new DirectoryInfo(dirpath);
+			FileInfo[] files = null;
+
+			try
+			{
+				files = di.GetFiles();
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e.Message);
+			}
+
+			foreach (FileInfo fi in files)
+			{
+				// String operation
+				repository.Index.Add(fi.Name);
+			}
+
+		}
+
+		private static bool CommitFile(string filepath, string rootPath, string username, string email, string message)
+		{
+			Repository repository = new(rootPath);
+			repository.Index.Add(filepath);
+			repository.Index.Write();
+
+			RemoveFromStaging(repository);
+			Commands.Stage(repository, filepath);
+
+			Signature author = new(username, email, DateTimeOffset.Now);
+			Commit commit = repository.Commit(message, author, author);
+
+			return true;
+		}
+
+		private static bool PushDirectory(string[] args)
 		{
 			throw new NotImplementedException();
+		}
+
+		private static bool FetchRemote(string filepath, string repoPath)
+		{
+			string msg = "update file" + filepath;
+			using Repository repository = new Repository(repoPath);
+			Remote remote = repository.Network.Remotes["origin"];
+			var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+			Commands.Fetch(repository, remote.Name, refSpecs, null, msg);
+
+			CheckoutOptions co = new CheckoutOptions();
+			co.CheckoutModifiers = CheckoutModifiers.Force;
+			repository.CheckoutPaths("master", new List<string>() {filepath}, co);
+
+			string t = GetToken(@"C:\Users\test\Documents\TFEToken");
+
+			PullOptions po = new PullOptions();
+			po.FetchOptions = new FetchOptions();
+			po.FetchOptions.CredentialsProvider = new CredentialsHandler(
+				(_url, _username, _types) =>
+					new UsernamePasswordCredentials()
+					{
+						Username = "jishimwe",
+						Password = t
+					});
+
+			Signature signature = new Signature(new Identity("jishimwe", "jeanpaulishimwe@gmail.com"), DateTimeOffset.Now);
+
+			Commands.Pull(repository, signature, po);
+
+			return true;
 		}
 
 		private static bool OpenFileFromRedirect(string[] args)
@@ -198,10 +320,18 @@ namespace RedirectFilesUtilities
 			{
 				string? path = sr.ReadLine();
 				if (path == null) return false;
+				string realPath = Path.Combine(rootPath, path);
+				if (File.Exists(realPath))
+				{
+					FetchRemote(path, rootPath);
+					OpenFile(realPath);
+					return true;
+				}
+
 				List<string> ls = new() { path };
 				// TODO: Remove hardcoded "master" value
 				repository.CheckoutPaths("master", ls, new CheckoutOptions());
-				string realPath = Path.Combine(rootPath, path);
+				
 				OpenFile(realPath);
 			}
 			catch (Exception e)
@@ -292,7 +422,7 @@ namespace RedirectFilesUtilities
 				return;
 			}
 			Console.WriteLine("Opening file . . . " + filepath);
-			//System.Diagnostics.Process.Start(defaultTxtReader, filepath);
+
 			ProcessStartInfo psi = new ProcessStartInfo()
 			{
 				FileName = filepath,
