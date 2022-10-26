@@ -57,7 +57,7 @@ ___
 ### Future functions
 
 
-- [ ] Commiting a directory
-- [ ] Pushing a directory
+- [x] Commiting a directory
+- [x] Pushing a directory
 - [ ] Conflict solving
 - [ ] Merging

@@ -3,13 +3,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Security;
-using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
-using RedirectFilesUtilities;
 using static RedirectFilesUtilities.UsagePrinter;
 using static RedirectFilesUtilities.GitUtilities;
 using static System.Net.WebRequestMethods;
-using File = System.IO.File;
 
 namespace RedirectFilesUtilities
 {
@@ -38,7 +34,7 @@ namespace RedirectFilesUtilities
 					break;
 
 				case "-c": //Commiting changes
-					if (!CommitFile(args))
+					if (!CommitFileOrDirectory(args))
 					{
 						Console.WriteLine("Failed to commit");
 						Environment.Exit(-1);
