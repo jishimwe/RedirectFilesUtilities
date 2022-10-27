@@ -51,13 +51,6 @@ namespace RedirectFilesUtilities
 			// TODO: Careful with hardcoded values
 			Remote remote = FetchRemote("", repository);
 
-			ConflictCollection conflicts = repository.Index.Conflicts;
-			
-			IndexNameEntryCollection indexes = conflicts.Names;
-			Diff df = repository.Diff;
-			Console.WriteLine(df);
-
-
 			try
 			{
 				repository.Network.Push(remote, @"refs/heads/master", opt);
@@ -275,9 +268,9 @@ namespace RedirectFilesUtilities
 			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
 
 			ConflictCollection conflicts = repository.Index.Conflicts;
-			Conflict conflict = null;
+			//Conflict conflict = null;
 			if (conflicts.Any())
-				 conflict = conflicts.First();
+				 PrintUsageConflict();
 
 			MergeOptions mo = new MergeOptions()
 			{

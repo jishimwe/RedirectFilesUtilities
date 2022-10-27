@@ -64,5 +64,10 @@ namespace RedirectFilesUtilities
 			                  "1 : accept remote changes" +
 			                  "2 : create a union of local and remote changes");
 		}
+
+		public static void PrintUsageConflicts()
+		{
+			Console.WriteLine("Some Conflicts need resolution");
+		}
 	}
 }
