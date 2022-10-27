@@ -42,15 +42,31 @@ namespace RedirectFilesUtilities
 
 			Repository repository = new(dir);
 
-			var opt = new PushOptions
+			PushOptions opt = new PushOptions
 			{
 				CredentialsProvider = (_url, _user, _cred) =>
 					new UsernamePasswordCredentials { Username = username, Password = GetToken(tokenFile) }
 			};
 
 			// TODO: Careful with hardcoded values
-			Remote remote = repository.Network.Remotes["origin"];
-			repository.Network.Push(remote, @"refs/heads/master", opt);
+			Remote remote = FetchRemote("", repository);
+
+			ConflictCollection conflicts = repository.Index.Conflicts;
+			
+			IndexNameEntryCollection indexes = conflicts.Names;
+			Diff df = repository.Diff;
+			Console.WriteLine(df);
+
+
+			try
+			{
+				repository.Network.Push(remote, @"refs/heads/master", opt);
+			}
+			catch (NonFastForwardException nfe)
+			{
+				Console.WriteLine(nfe.Message);
+				PullFiles(tokenFile, username, "jeanpaulishimwe@gmail.com", repository);
+			}
 
 			return true;
 		}
@@ -90,7 +106,7 @@ namespace RedirectFilesUtilities
 				return false;
 			}
 
-			if (File.Exists(filepath))
+			if (File.Exists(Path.Combine(rootPath, filepath)))
 			{
 				return CommitFile(filepath, rootPath, username, email, message);
 			}
@@ -202,19 +218,22 @@ namespace RedirectFilesUtilities
 			return true;
 		}
 
-		private static bool FetchRemote(string filepath, string repoPath)
+		private static Remote FetchRemote(string filepath, Repository repository)
 		{
-			string msg = "update file" + filepath;
-			using Repository repository = new Repository(repoPath);
+			string msg = "fetching remote file " + filepath;
+			//using Repository repository = new Repository(repoPath);
 			Remote remote = repository.Network.Remotes["origin"];
 			var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
 			Commands.Fetch(repository, remote.Name, refSpecs, null, msg);
 
 			CheckoutOptions co = new CheckoutOptions();
-			co.CheckoutModifiers = CheckoutModifiers.Force;
-			repository.CheckoutPaths("master", new List<string>() { filepath }, co);
+			//co.CheckoutModifiers = CheckoutModifiers.Force;
+			if(filepath != "")
+				repository.CheckoutPaths("master", new List<string>() { filepath }, co);
 
-			string t = GetToken(@"C:\Users\test\Documents\TFEToken");
+			return remote;
+
+			/*string t = GetToken(@"C:\Users\test\Documents\TFEToken");
 
 			PullOptions po = new PullOptions();
 			po.FetchOptions = new FetchOptions();
@@ -228,7 +247,49 @@ namespace RedirectFilesUtilities
 
 			Signature signature = new Signature(new Identity("jishimwe", "jeanpaulishimwe@gmail.com"), DateTimeOffset.Now);
 
+			ConflictCollection conflicts = repository.Index.Conflicts;
+
 			Commands.Pull(repository, signature, po);
+
+			return true;*/
+		}
+
+		private static bool PullFiles(string tokenFile, string username, string mail, Repository repository)
+		{
+			string token = GetToken(tokenFile);
+
+			PullOptions po = new()
+			{
+				FetchOptions = new FetchOptions
+				{
+					CredentialsProvider = new CredentialsHandler(
+						(_url, _username, _types) =>
+							new UsernamePasswordCredentials()
+							{
+								Username = username,
+								Password = token
+							})
+				}
+			};
+
+			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
+
+			ConflictCollection conflicts = repository.Index.Conflicts;
+			Conflict conflict = null;
+			if (conflicts.Any())
+				 conflict = conflicts.First();
+
+			MergeOptions mo = new MergeOptions()
+			{
+				FastForwardStrategy = FastForwardStrategy.Default,
+				FileConflictStrategy = CheckoutFileConflictStrategy.Diff3,
+				MergeFileFavor = MergeFileFavor.Union
+			};
+			repository.MergeFetchedRefs(signature, mo);
+			//Diff df = repository.Diff.Compare(a, b);
+			
+			Commands.Pull(repository, signature, po);
+
 
 			return true;
 		}
@@ -268,7 +329,8 @@ namespace RedirectFilesUtilities
 				string realPath = Path.Combine(rootPath, path);
 				if (File.Exists(realPath))
 				{
-					FetchRemote(path, rootPath);
+					FetchRemote(path, repository);
+					PullFiles(@"C:\Users\test\Documents\TFEToken", "jishimwe", "jeanpaulishimwe@gmail.com", repository); 
 					OpenFile(realPath);
 					return true;
 				}
@@ -287,7 +349,43 @@ namespace RedirectFilesUtilities
 			return true;
 		}
 
+		private static bool MergeSolver(string rootPath, int mergeOptions)
+		{
+			MergeOptions mo = new MergeOptions()
+			{
+				FastForwardStrategy = FastForwardStrategy.Default,
+				FileConflictStrategy = CheckoutFileConflictStrategy.Diff3,
+				MergeFileFavor = MergeFileFavor.Normal
+			};
+			switch (mergeOptions)
+			{
+				case 0:
+					mo.MergeFileFavor = MergeFileFavor.Union;
+					break;
 
+				case 1:
+					mo.MergeFileFavor = MergeFileFavor.Ours;
+					break;
+
+				case 2:
+					mo.MergeFileFavor = MergeFileFavor.Theirs;
+					break;
+
+				default:
+					PrintUsageMerge();
+					Environment.Exit(-1);
+					break;
+			}
+
+			Signature signature = new Signature("jishmwe", "jeanpaulishimwe@gmail.com", DateTimeOffset.Now);
+
+			Repository repository = new Repository(rootPath);
+			//var commit = repository.Commits;
+
+			repository.MergeFetchedRefs(signature, mo);
+
+			return true;
+		}
 
 		private static string GetToken(string? filepath)
 		{

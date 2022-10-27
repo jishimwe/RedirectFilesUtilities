@@ -55,5 +55,14 @@ namespace RedirectFilesUtilities
 			}
 			return res;
 		}
+
+		public static void PrintUsageMerge()
+		{
+			Console.WriteLine("Merge Options");
+			Console.WriteLine("-m <options>	: flag to indicate the merge strategy" +
+			                  "0 : accept local changes" +
+			                  "1 : accept remote changes" +
+			                  "2 : create a union of local and remote changes");
+		}
 	}
 }
