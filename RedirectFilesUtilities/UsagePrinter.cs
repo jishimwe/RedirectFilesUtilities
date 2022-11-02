@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LibGit2Sharp;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -65,9 +66,10 @@ namespace RedirectFilesUtilities
 			                  "2 : create a union of local and remote changes");
 		}
 
-		public static void PrintUsageConflicts()
+		public static void PrintUsageConflicts(ConflictCollection conflicts)
 		{
 			Console.WriteLine("Some Conflicts need resolution");
+			Console.WriteLine(conflicts.Names);
 		}
 	}
 }

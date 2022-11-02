@@ -270,7 +270,7 @@ namespace RedirectFilesUtilities
 			ConflictCollection conflicts = repository.Index.Conflicts;
 			//Conflict conflict = null;
 			if (conflicts.Any())
-				 PrintUsageConflict();
+				PrintUsageConflicts(conflicts);
 
 			MergeOptions mo = new MergeOptions()
 			{
