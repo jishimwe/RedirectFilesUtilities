@@ -60,10 +60,10 @@ namespace RedirectFilesUtilities
 		public static void PrintUsageMerge()
 		{
 			Console.WriteLine("Merge Options");
-			Console.WriteLine("-m <options>	: flag to indicate the merge strategy" +
-			                  "0 : accept local changes" +
-			                  "1 : accept remote changes" +
-			                  "2 : create a union of local and remote changes");
+			Console.WriteLine("-m <options>	: flag to indicate the merge strategy \n" +
+			                  "0 : create a union of local and remote changes \n" +
+							  "1 : accept local changes \n" +
+			                  "2 : accept remote changes \n");
 		}
 
 		public static void PrintUsageConflicts(ConflictCollection conflicts)

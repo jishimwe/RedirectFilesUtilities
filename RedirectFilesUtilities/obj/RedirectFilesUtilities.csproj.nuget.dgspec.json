@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ishim\\source\\repos\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj": {}
+    "C:\\Users\\test\\Documents\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ishim\\source\\repos\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj": {
+    "C:\\Users\\test\\Documents\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ishim\\source\\repos\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj",
+        "projectUniqueName": "C:\\Users\\test\\Documents\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj",
         "projectName": "RedirectFilesUtilities",
-        "projectPath": "C:\\Users\\ishim\\source\\repos\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj",
-        "packagesPath": "C:\\Users\\ishim\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ishim\\source\\repos\\RedirectFilesUtilities\\RedirectFilesUtilities\\obj\\",
+        "projectPath": "C:\\Users\\test\\Documents\\RedirectFilesUtilities\\RedirectFilesUtilities\\RedirectFilesUtilities.csproj",
+        "packagesPath": "C:\\Users\\test\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\test\\Documents\\RedirectFilesUtilities\\RedirectFilesUtilities\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ishim\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\test\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],

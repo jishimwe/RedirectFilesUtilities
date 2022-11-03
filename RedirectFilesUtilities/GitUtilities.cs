@@ -14,7 +14,9 @@ namespace RedirectFilesUtilities
     {
 		public static bool PushCommit(string[] args)
 		{
-			string dir = "", username = "", tokenFile = "";
+			string dir = "", username = "", tokenFile = "",
+				mail = "jeanpaulishimwe@gmail.com",
+				refSpecs = @"refs/heads/master";
 			for (int i = 1; i < args.Length; i += 2)
 			{
 				switch (args[i])
@@ -58,7 +60,7 @@ namespace RedirectFilesUtilities
 			catch (NonFastForwardException nfe)
 			{
 				Console.WriteLine(nfe.Message);
-				PullFiles(tokenFile, username, "jeanpaulishimwe@gmail.com", repository);
+				PullFiles(tokenFile, username, mail, repository);
 			}
 
 			return true;
@@ -206,13 +208,22 @@ namespace RedirectFilesUtilities
 			Commands.Stage(repository, filepath);
 
 			Signature author = new(username, email, DateTimeOffset.Now);
-			Commit commit = repository.Commit(message, author, author);
-
+			try
+			{
+				Commit commit = repository.Commit(message, author, author);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+				return false;
+			}
+			
 			return true;
 		}
 
 		private static Remote FetchRemote(string filepath, Repository repository)
 		{
+			// TODO: Remove hardcoded values
 			string msg = "fetching remote file " + filepath;
 			//using Repository repository = new Repository(repoPath);
 			Remote remote = repository.Network.Remotes["origin"];
@@ -225,71 +236,97 @@ namespace RedirectFilesUtilities
 				repository.CheckoutPaths("master", new List<string>() { filepath }, co);
 
 			return remote;
-
-			/*string t = GetToken(@"C:\Users\test\Documents\TFEToken");
-
-			PullOptions po = new PullOptions();
-			po.FetchOptions = new FetchOptions();
-			po.FetchOptions.CredentialsProvider = new CredentialsHandler(
-				(url, username, types) =>
-					new UsernamePasswordCredentials()
-					{
-						Username = "jishimwe",
-						Password = t
-					});
-
-			Signature signature = new Signature(new Identity("jishimwe", "jeanpaulishimwe@gmail.com"), DateTimeOffset.Now);
-
-			ConflictCollection conflicts = repository.Index.Conflicts;
-
-			Commands.Pull(repository, signature, po);
-
-			return true;*/
 		}
 
 		private static bool PullFiles(string tokenFile, string username, string mail, Repository repository)
 		{
 			string token = GetToken(tokenFile);
 
+			FetchOptions fo = new FetchOptions
+			{
+				CredentialsProvider = new CredentialsHandler(
+					(_url, _username, _types) =>
+						new UsernamePasswordCredentials()
+						{
+							Username = username,
+							Password = token
+						})
+			};
+
 			PullOptions po = new()
 			{
-				FetchOptions = new FetchOptions
-				{
-					CredentialsProvider = new CredentialsHandler(
-						(_url, _username, _types) =>
-							new UsernamePasswordCredentials()
-							{
-								Username = username,
-								Password = token
-							})
-				}
+				FetchOptions = fo
 			};
 
 			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
 
+			string msg = "Fetch remotes VISUAL STUDIO";
+
+			Remote remote = repository.Network.Remotes["origin"];
+			var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+			Commands.Fetch(repository, remote.Name, refSpecs, fo, msg);
+
 			ConflictCollection conflicts = repository.Index.Conflicts;
 			//Conflict conflict = null;
 			if (conflicts.Any())
+			{
 				PrintUsageConflicts(conflicts);
+				Console.WriteLine();
+				PrintUsageMerge();
+				try
+				{
+					Console.WriteLine("\nChoose your options: ");
+					string s = Console.ReadLine();
+					//string[] sArgs = s.Split(' ');
+					int mergeOptions = s == null ? 3 : int.Parse(s);
+					return MergeSolver(repository, mergeOptions);
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine(e);
+					return false;
+				}
+			}
 
-			MergeOptions mo = new MergeOptions()
+			/*MergeOptions mo = new MergeOptions()
 			{
 				FastForwardStrategy = FastForwardStrategy.Default,
 				FileConflictStrategy = CheckoutFileConflictStrategy.Diff3,
 				MergeFileFavor = MergeFileFavor.Union
 			};
-			repository.MergeFetchedRefs(signature, mo);
+			repository.MergeFetchedRefs(signature, mo);*/
 			//Diff df = repository.Diff.Compare(a, b);
-			
-			Commands.Pull(repository, signature, po);
+			try
+			{
+				Commands.Pull(repository, signature, po);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+				PrintUsageConflicts(conflicts);
+				Console.WriteLine();
+				PrintUsageMerge();
 
+				Console.WriteLine("\nChoose your options: ");
+				string s = Console.ReadLine();
+				//string[] sArgs = s.Split(' ');
+				int mergeOptions = s == null ? 3 : int.Parse(s);
+				MergeSolver(repository, mergeOptions);
+			}
+			
 
 			return true;
 		}
 
 		public static bool OpenFileFromRedirect(string[] args)
 		{
-			string redirPath = "", rootPath = "";
+			// TODO: Careful with hardcoded values
+			string redirPath = "", rootPath = "", 
+				tokenPath = @"C:\Users\test\Documents\TFEToken", 
+				username = "jishimwe", 
+				mail = "jeanpaulishimwe@gmail.com", 
+				branchName = "master",
+				remoteName = "origin";
 
 			for (int i = 1; i < args.Length; i += 2)
 			{
@@ -300,6 +337,18 @@ namespace RedirectFilesUtilities
 						break;
 					case "-d":
 						rootPath = args[i + 1];
+						break;
+					case "-t":
+						tokenPath = args[i + 1];
+						break;
+					case "e":
+						mail = args[i + 1];
+						break;
+					case "-u":
+						username = args[i + 1];
+						break;
+					case "-b":
+						branchName = args[i + 1];
 						break;
 					default:
 						PrintUsageOpenFile();
@@ -323,26 +372,32 @@ namespace RedirectFilesUtilities
 				if (File.Exists(realPath))
 				{
 					FetchRemote(path, repository);
-					PullFiles(@"C:\Users\test\Documents\TFEToken", "jishimwe", "jeanpaulishimwe@gmail.com", repository); 
+					PullFiles(tokenPath, username, mail, repository); 
 					OpenFile(realPath);
 					return true;
 				}
 
 				List<string> ls = new() { path };
-				// TODO: Remove hardcoded "master" value
-				repository.CheckoutPaths("master", ls, new CheckoutOptions());
+				
+				repository.CheckoutPaths(branchName, ls, new CheckoutOptions());
 
 				OpenFile(realPath);
 			}
 			catch (Exception e)
 			{
+				ConflictCollection cc = repository.Index.Conflicts;
+				if (cc.Any())
+				{
+					Console.WriteLine(cc.Names + "\t " + cc.First().Ours + "\t " + cc.First().Theirs);
+					MergeSolver(repository, 0);
+				}				
 				Console.WriteLine(e.Message);
 			}
 
 			return true;
 		}
 
-		private static bool MergeSolver(string rootPath, int mergeOptions)
+		private static bool MergeSolver(Repository repository, int mergeOptions)
 		{
 			MergeOptions mo = new MergeOptions()
 			{
@@ -364,16 +419,20 @@ namespace RedirectFilesUtilities
 					mo.MergeFileFavor = MergeFileFavor.Theirs;
 					break;
 
+				case 3:
+					break;
+
 				default:
 					PrintUsageMerge();
 					Environment.Exit(-1);
 					break;
 			}
 
-			Signature signature = new Signature("jishmwe", "jeanpaulishimwe@gmail.com", DateTimeOffset.Now);
+			Signature signature = new Signature("jishimwe", "jeanpaulishimwe@gmail.com", DateTimeOffset.Now);
 
-			Repository repository = new Repository(rootPath);
+			//Repository repository = new Repository(rootPath);
 			//var commit = repository.Commits;
+			//Commands.Fetch(repository, "origin", null, null, null);
 
 			repository.MergeFetchedRefs(signature, mo);
 
@@ -384,8 +443,16 @@ namespace RedirectFilesUtilities
 		{
 			if (filepath == null || !File.Exists(filepath))
 				return "";
-			string s = File.ReadAllText(filepath);
-			return s;
+			try
+			{
+				return File.ReadAllText(filepath);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e.Message);
+				Environment.Exit(-1);
+				return null;
+			}
 		}
 
 		// Obsolete?
@@ -404,6 +471,9 @@ namespace RedirectFilesUtilities
 			return read ?? "no data";
 		}
 
+		/*
+		 * Open a file in the default application
+		 */
 		private static void OpenFile(string filepath)
 		{
 			if (!File.Exists(filepath))
