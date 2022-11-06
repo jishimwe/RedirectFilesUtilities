@@ -250,12 +250,18 @@ namespace RedirectFilesUtilities
 						{
 							Username = username,
 							Password = token
-						})
+						}),
+			};
+
+			MergeOptions mo = new MergeOptions()
+			{
+				FileConflictStrategy = CheckoutFileConflictStrategy.Theirs
 			};
 
 			PullOptions po = new()
 			{
-				FetchOptions = fo
+				FetchOptions = fo,
+				MergeOptions = mo
 			};
 
 			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
@@ -276,7 +282,7 @@ namespace RedirectFilesUtilities
 				try
 				{
 					Console.WriteLine("\nChoose your options: ");
-					string s = Console.ReadLine();
+					string? s = Console.ReadLine();
 					//string[] sArgs = s.Split(' ');
 					int mergeOptions = s == null ? 3 : int.Parse(s);
 					return MergeSolver(repository, mergeOptions);
@@ -308,7 +314,7 @@ namespace RedirectFilesUtilities
 				PrintUsageMerge();
 
 				Console.WriteLine("\nChoose your options: ");
-				string s = Console.ReadLine();
+				string? s = Console.ReadLine();
 				//string[] sArgs = s.Split(' ');
 				int mergeOptions = s == null ? 3 : int.Parse(s);
 				MergeSolver(repository, mergeOptions);
@@ -378,8 +384,13 @@ namespace RedirectFilesUtilities
 				}
 
 				List<string> ls = new() { path };
+
+				CheckoutOptions co = new CheckoutOptions()
+				{
+					CheckoutNotifyFlags = CheckoutNotifyFlags.Conflict
+				};
 				
-				repository.CheckoutPaths(branchName, ls, new CheckoutOptions());
+				repository.CheckoutPaths(branchName, ls, co);
 
 				OpenFile(realPath);
 			}
