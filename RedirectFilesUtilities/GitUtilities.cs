@@ -30,6 +30,9 @@ namespace RedirectFilesUtilities
 					case "-u":
 						username = args[i + 1];
 						break;
+					case "-e":
+						mail = args[i + 1];
+						break;
 					default:
 						PrintUsagePush();
 						return false;
@@ -55,12 +58,13 @@ namespace RedirectFilesUtilities
 
 			try
 			{
-				repository.Network.Push(remote, @"refs/heads/master", opt);
+				repository.Network.Push(remote, refSpecs, opt);
 			}
 			catch (NonFastForwardException nfe)
 			{
 				Console.WriteLine(nfe.Message);
-				PullFiles(tokenFile, username, mail, repository);
+				Console.WriteLine("Some files may need updating, try updating before pushing");
+				//PullFiles(tokenFile, username, mail, repository);
 			}
 
 			return true;
@@ -95,7 +99,7 @@ namespace RedirectFilesUtilities
 				}
 			}
 
-			if (InvalidArguments(filepath, rootPath, username))
+			if (InvalidArguments(filepath, rootPath, username, message, email))
 			{
 				PrintUsageCommit();
 				return false;
@@ -138,7 +142,7 @@ namespace RedirectFilesUtilities
 				}
 			}
 
-			if (InvalidArguments(filepath, rootPath, username))
+			if (InvalidArguments(filepath, rootPath, username, message, email))
 			{
 				PrintUsageCommit();
 				return false;
@@ -218,7 +222,6 @@ namespace RedirectFilesUtilities
 				Console.WriteLine(e);
 				return false;
 			}
-			
 			return true;
 		}
 
@@ -252,37 +255,33 @@ namespace RedirectFilesUtilities
 						}),
 			};
 
-			MergeOptions mo = SetMergeOptions();
+			MergeOptions mo = new()
+			{
+				FailOnConflict = true
+			};
 
 			PullOptions po = new()
 			{
-				FetchOptions = fo,
-				MergeOptions = mo
+				FetchOptions = fo
+				//MergeOptions = mo
 			};
 
 			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
 
-			string msg = "Fetch remotes VISUAL STUDIO";
+			//string msg = "Fetch remotes VISUAL STUDIO";
 
-			Remote remote = repository.Network.Remotes["origin"];
-			var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-			Commands.Fetch(repository, remote.Name, refSpecs, fo, msg);
+			//Remote remote = repository.Network.Remotes["origin"];
+			//var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+			//Commands.Fetch(repository, remote.Name, refSpecs, fo, msg);
+			Remote remote = FetchRemote("", repository);
 
 			ConflictCollection conflicts = repository.Index.Conflicts;
 			if (conflicts.Any())
 			{
 				PrintUsageConflicts(conflicts);
-				try
-				{
-					return MergeSolver(repository);
-				}
-				catch (Exception e)
-				{
-					Console.WriteLine(e);
-					return false;
-				}
+				Environment.Exit(-2);
 			}
-			
+
 			try
 			{
 				Commands.Pull(repository, signature, po);
@@ -290,12 +289,7 @@ namespace RedirectFilesUtilities
 			catch (Exception e)
 			{
 				Console.WriteLine(e);
-				PrintUsageConflicts(conflicts);
-				
-				MergeSolver(repository);
 			}
-			
-
 			return true;
 		}
 
@@ -304,11 +298,7 @@ namespace RedirectFilesUtilities
 			// TODO: Careful with hardcoded values
 			string redirPath = "", 
 				rootPath = "", 
-				tokenPath = @"C:\Users\test\Documents\TFEToken", 
-				username = "jishimwe", 
-				mail = "jeanpaulishimwe@gmail.com", 
-				branchName = "master",
-				remoteName = "origin";
+				branchName = "master";
 
 			for (int i = 1; i < args.Length; i += 2)
 			{
@@ -320,15 +310,15 @@ namespace RedirectFilesUtilities
 					case "-d":
 						rootPath = args[i + 1];
 						break;
-					case "-t":
-						tokenPath = args[i + 1];
-						break;
-					case "e":
-						mail = args[i + 1];
-						break;
-					case "-u":
-						username = args[i + 1];
-						break;
+					//case "-t":
+					//	tokenPath = args[i + 1];
+					//	break;
+					//case "e":
+					//	mail = args[i + 1];
+					//	break;
+					//case "-u":
+					//	username = args[i + 1];
+					//	break;
 					case "-b":
 						branchName = args[i + 1];
 						break;
@@ -353,8 +343,6 @@ namespace RedirectFilesUtilities
 				string realPath = Path.Combine(rootPath, path);
 				if (File.Exists(realPath))
 				{
-					FetchRemote(path, repository);
-					PullFiles(tokenPath, username, mail, repository); 
 					OpenFile(realPath);
 					return true;
 				}
@@ -376,7 +364,9 @@ namespace RedirectFilesUtilities
 				if (cc.Any())
 				{
 					Console.WriteLine(cc.Names + "\t " + cc.First().Ours + "\t " + cc.First().Theirs);
-					MergeSolver(repository);
+					PrintUsageConflicts(cc);
+					PrintUsageMerge();
+					Environment.Exit(-2);
 				}				
 				Console.WriteLine(e.Message);
 			}
@@ -384,23 +374,93 @@ namespace RedirectFilesUtilities
 			return true;
 		}
 
-		private static bool MergeSolver(Repository repository)
+		public static bool UpdateRepository(string[] args)
+		{
+			string rootPath = "",
+				username = "",
+				mail = "",
+				tokenPath = "";
+
+			for (int i = 1; i < args.Length; i += 2)
+			{
+				switch (args[i])
+				{
+					case "-d":
+						rootPath = args[i + 1];
+						break;
+					case "-u":
+						username = args[i + 1];
+						break;
+					case "-e":
+						mail = args[i + 1];
+						break;
+					case "-t":
+						tokenPath = args[i + 1];
+						break;
+					default:
+						PrintUsageUpdate();
+						return false;
+				}
+			}
+
+			if (InvalidArguments(rootPath, username, mail, tokenPath))
+			{
+				PrintUsageUpdate();
+				return false;
+			}
+
+			Repository repository = new Repository(rootPath);
+			PullFiles(tokenPath, username, mail, repository);
+			
+			return true;
+		}
+
+		// Obsolete?
+		private static bool MergeSolver(Repository repository, string mergeOptions = "3")
 		{
 			MergeOptions mo = SetMergeOptions();
-
 			Signature signature = new Signature("jishimwe", "jeanpaulishimwe@gmail.com", DateTimeOffset.Now);
+			repository.MergeFetchedRefs(signature, mo);
+
+			return true;
+		}
+
+		public static bool MergeSolver(string[] args)
+		{
+			string rootPath = "",
+				username = "jishimwe",
+				mail = "jeanpaulishimwe@gmail.com",
+				mergeOptions = args[1];
+
+			for (int i = 2; i < args.Length; i += 2)
+			{
+				switch (args[i])
+				{
+					case "-d":
+						rootPath = args[i + 1];
+						break;
+					case "-u":
+						username = args[i + 1];
+						break;
+					case "-e":
+						mail = args[i + 1];
+						break;
+					default:
+						PrintUsageMerge();
+						return false;
+				}
+			}
+
+			Repository repository = new(rootPath);
+			MergeOptions mo = SetMergeOptions(mergeOptions);
+			Signature signature = new Signature(username, mail, DateTimeOffset.Now);
 
 			repository.MergeFetchedRefs(signature, mo);
 
 			return true;
 		}
 
-		private static bool MergeSolver(string[] args)
-		{
-			throw new NotImplementedException();
-		}
-
-		private static MergeOptions SetMergeOptions()
+		private static MergeOptions SetMergeOptions(string? s = "3")
 		{
 			MergeOptions mo = new MergeOptions()
 			{
@@ -408,11 +468,6 @@ namespace RedirectFilesUtilities
 				FileConflictStrategy = CheckoutFileConflictStrategy.Diff3,
 				MergeFileFavor = MergeFileFavor.Normal
 			};
-			Console.WriteLine();
-			PrintUsageMerge();
-
-			Console.WriteLine("\nChoose your options: ");
-			string? s = Console.ReadLine();
 
 			int mergeOptions = s == null ? 3 : int.Parse(s);
 
@@ -421,18 +476,14 @@ namespace RedirectFilesUtilities
 				case 0:
 					mo.MergeFileFavor = MergeFileFavor.Union;
 					break;
-
 				case 1:
-					mo.MergeFileFavor = MergeFileFavor.Ours;
+					mo.MergeFileFavor = MergeFileFavor.Ours; 
 					break;
-
 				case 2:
 					mo.MergeFileFavor = MergeFileFavor.Theirs;
 					break;
-
 				case 3:
 					break;
-
 				default:
 					PrintUsageMerge();
 					Environment.Exit(-1);

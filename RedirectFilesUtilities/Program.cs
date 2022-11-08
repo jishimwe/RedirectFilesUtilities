@@ -25,7 +25,7 @@ namespace RedirectFilesUtilities
 			string actionType = args[0];
 			switch (actionType)
 			{
-				case "-o": //opening a file
+				case "-open": //opening a file
 					if (!OpenFileFromRedirect(args))
 					{
 						Console.WriteLine("Failed to open the file");
@@ -33,7 +33,7 @@ namespace RedirectFilesUtilities
 					}
 					break;
 
-				case "-c": //Commiting changes
+				case "-commit": //Commiting changes
 					if (!CommitFileOrDirectory(args))
 					{
 						Console.WriteLine("Failed to commit");
@@ -41,17 +41,34 @@ namespace RedirectFilesUtilities
 					}
 					break;
 
-				case "-p": //Pushing commit
+				case "-push": //Pushing commit
 					if (!PushCommit(args))
 					{
 						Console.WriteLine("Failed to push");
 						Environment.Exit(-1);
 					}
 					break;
+				case "-merge": //Merging to resolve conflicts
+					if (!MergeSolver(args))
+					{
+						Console.WriteLine("Failed to resolve conflict");
+						Environment.Exit(-1);
+					}
+					break;
+				case "-update":
+					if (!UpdateRepository(args))
+					{
+						Console.WriteLine("Failed to update repository");
+						Environment.Exit(-1);
+					}
+
+					break;
 				default:
 					PrintUsageOpenFile();
 					PrintUsageCommit();
 					PrintUsagePush();
+					PrintUsageUpdate();
+					PrintUsageMerge();
 					Environment.Exit(-1);
 					break;
 			}

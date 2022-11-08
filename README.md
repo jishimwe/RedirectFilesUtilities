@@ -60,4 +60,4 @@ ___
 - [x] Commiting a directory
 - [x] Pushing a directory
 - [ ] Conflict solving
-- [ ] Merging
+- [x] Merging
