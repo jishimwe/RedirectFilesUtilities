@@ -12,11 +12,13 @@ namespace RedirectFilesUtilities
 {
     public static class GitUtilities
     {
-		public static bool PushCommit(string[] args)
+		public static bool PushCommit(string[] args, bool force = false)
 		{
 			string dir = "", username = "", tokenFile = "",
 				mail = "jeanpaulishimwe@gmail.com",
 				refSpecs = @"refs/heads/master";
+			if (force)
+				refSpecs = "+" + refSpecs; 
 			for (int i = 1; i < args.Length; i += 2)
 			{
 				switch (args[i])
@@ -64,10 +66,14 @@ namespace RedirectFilesUtilities
 			{
 				Console.WriteLine(nfe.Message);
 				Console.WriteLine("Some files may need updating, try updating before pushing");
-				//PullFiles(tokenFile, username, mail, repository);
 			}
 
 			return true;
+		}
+
+		public static bool ForcePush(string[] args)
+		{
+			return PushCommit(args, true);
 		}
 
 		public static bool CommitFileOrDirectory(string[] args)
@@ -255,24 +261,13 @@ namespace RedirectFilesUtilities
 						}),
 			};
 
-			MergeOptions mo = new()
-			{
-				FailOnConflict = true
-			};
-
 			PullOptions po = new()
 			{
 				FetchOptions = fo
-				//MergeOptions = mo
 			};
 
 			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
-
-			//string msg = "Fetch remotes VISUAL STUDIO";
-
-			//Remote remote = repository.Network.Remotes["origin"];
-			//var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-			//Commands.Fetch(repository, remote.Name, refSpecs, fo, msg);
+			
 			Remote remote = FetchRemote("", repository);
 
 			ConflictCollection conflicts = repository.Index.Conflicts;
@@ -289,6 +284,12 @@ namespace RedirectFilesUtilities
 			catch (Exception e)
 			{
 				Console.WriteLine(e);
+				if (e is CheckoutConflictException)
+				{
+					Console.WriteLine("Some Conflicts need resolution");
+					Environment.Exit((-2));
+				}
+				return false;
 			}
 			return true;
 		}
@@ -310,15 +311,6 @@ namespace RedirectFilesUtilities
 					case "-d":
 						rootPath = args[i + 1];
 						break;
-					//case "-t":
-					//	tokenPath = args[i + 1];
-					//	break;
-					//case "e":
-					//	mail = args[i + 1];
-					//	break;
-					//case "-u":
-					//	username = args[i + 1];
-					//	break;
 					case "-b":
 						branchName = args[i + 1];
 						break;
@@ -410,9 +402,7 @@ namespace RedirectFilesUtilities
 			}
 
 			Repository repository = new Repository(rootPath);
-			PullFiles(tokenPath, username, mail, repository);
-			
-			return true;
+			return PullFiles(tokenPath, username, mail, repository);
 		}
 
 		// Obsolete?
@@ -458,6 +448,13 @@ namespace RedirectFilesUtilities
 			repository.MergeFetchedRefs(signature, mo);
 
 			return true;
+		}
+
+		public static bool OpenConflictFile(string[] args)
+		{
+
+
+			throw new NotImplementedException();
 		}
 
 		private static MergeOptions SetMergeOptions(string? s = "3")

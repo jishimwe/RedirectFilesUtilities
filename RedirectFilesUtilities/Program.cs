@@ -61,7 +61,13 @@ namespace RedirectFilesUtilities
 						Console.WriteLine("Failed to update repository");
 						Environment.Exit(-1);
 					}
-
+					break;
+				case "-forcePush":
+					if (!ForcePush(args))
+					{
+						Console.WriteLine("Failed to force push");
+						Environment.Exit(-1);
+					}
 					break;
 				default:
 					PrintUsageOpenFile();

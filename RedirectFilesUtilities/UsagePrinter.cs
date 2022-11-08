@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -48,7 +49,7 @@ namespace RedirectFilesUtilities
 		public static void PrintUsageUpdate()
 		{
 			Console.WriteLine("Update repository");
-			Console.WriteLine("-update			: flag to launch an update for the repo\n" + // TODO: will it only update the present files?
+			Console.WriteLine("-update			: flag to launch an update for the repo\n" + // TODO: will it only update the local files?
 							  "\t-d <path>	: path to the root of real project\n" +
 							  "\t-u <user>	: the git user username\n" +
 							  "\t-e <mail>	: the git user email address\n" +
@@ -83,12 +84,31 @@ namespace RedirectFilesUtilities
 							  "\t-d <path>	: path to the root of real project\n" +
 							  "\t-u <user>	: the git user username\n" +
 			                  "\t-e <mail>	: the git user email address\n");
+			Console.WriteLine();
+		}
+
+		public static void PrintUsageForcePush()
+		{
+			Console.WriteLine("Force a push of a commit");
+			Console.WriteLine("-forcePush			: flag to launch a force push\n" +
+			                  "\t-d <path>	: path to the root of real project\n" +
+			                  "\t-t <path>	: flag to give a token with a path to a file containing the token\n" +
+							  "\t-u <user>	: the git user username\n" +
+							  "\t-e <mail>	: the git user email address\n");
+		}
+
+		public static void OpenConflictResolutionTool()
+		{
+			Console.WriteLine("Opening a conflict resolution tool to resolve a conflict" +
+			                  "-conflictTool			: flag to open a conflict resolution tool\n" +
+			                  "\t-t <path>	: path to the conflict resolution tool\n" +
+							  "\t-d <path>	: path to the root of real project\n");
 		}
 
 		public static void PrintUsageConflicts(ConflictCollection conflicts)
 		{
 			Console.WriteLine("Some Conflicts need resolution");
-			Console.WriteLine("[" + string.Join(", -- " , conflicts.Names) + "]\t"  + conflicts.Names);
+			Console.WriteLine("[" + string.Join(", -- " , conflicts) + "]\t"  + conflicts.Names);
 		}
 	}
 }
