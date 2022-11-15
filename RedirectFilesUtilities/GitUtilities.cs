@@ -11,7 +11,16 @@ using static RedirectFilesUtilities.UsagePrinter;
 namespace RedirectFilesUtilities
 {
 	public static class GitUtilities
-    {
+	{
+		private const string RootPath = "rootPath",
+			TokenPath = "tokenPath",
+			Username = "username",
+			Email = "email",
+			Filepath = "filepath",
+			Message = "message",
+			RedirPath = "redirPath",
+			BranchName = "branchName";
+
 		// TODO: Finish arguments handler (not a priority)
 	    private static IDictionary<string, string> ArgumentsHandler(string[] args)
 	    {
@@ -21,89 +30,67 @@ namespace RedirectFilesUtilities
 				switch (args[i])
 				{
 					case "-d":
-						AddToDictionary(result, "rootPath", args[i + 1]);
+						AddToDictionary(result, RootPath, args[i + 1]);
 						break;
 					case "-t":
-						AddToDictionary(result, "tokePath", args[i + 1]);
+						AddToDictionary(result, TokenPath, args[i + 1]);
 						break;
 					case "-u":
-						AddToDictionary(result, "username", args[i + 1]);
+						AddToDictionary(result, Username, args[i + 1]);
 						break;
 					case "-e":
-						AddToDictionary(result, "email", args[i + 1]);
+						AddToDictionary(result, Email, args[i + 1]);
 						break;
 					case "-f":
-						AddToDictionary(result, "filepath", args[i + 1]);
+						AddToDictionary(result, Filepath, args[i + 1]);
 						break;
 					case "-m":
-						AddToDictionary(result, "message", args[i + 1]);
+						AddToDictionary(result, Message, args[i + 1]);
 						break;
 					case "-r":
-						AddToDictionary(result, "redirPath", args[i + 1]);
+						AddToDictionary(result, RedirPath, args[i + 1]);
 						break;
 					case "-b":
-						AddToDictionary(result, "branchName", args[i + 1]);
+						AddToDictionary(result, BranchName, args[i + 1]);
 						break;
 					default:
 						Console.WriteLine("Unrecognized argument: " + args[i] + "\t" + args[i + 1]);
 						break;
 				}
 			}
-			throw new NotImplementedException();
+			return result;
 	    }
 
-	    private static bool AddToDictionary(IDictionary<string, string> argsDictionary, string key, string val)
+		// Add a val to a dictionary, replace the old value if the key is already in the dictionary
+	    private static void AddToDictionary(IDictionary<string, string> argsDictionary, string key, string val)
 	    {
 		    if (argsDictionary.ContainsKey(key))
 		    {
 				argsDictionary[key] = val;
-				return true;
 		    }
 			argsDictionary.Add(key, val);
-			return true;
 	    }
 
 		public static bool PushCommit(string[] args, bool force = false)
 		{
-			string dir = "", username = "", tokenFile = "",
-				mail = "jeanpaulishimwe@gmail.com",
-				refSpecs = @"refs/heads/master";
+			string refSpecs = @"refs/heads/master";
 			if (force)
-				refSpecs = "+" + refSpecs; 
-			for (int i = 1; i < args.Length; i += 2)
-			{
-				switch (args[i])
-				{
-					case "-d":
-						dir = args[i + 1];
-						break;
-					case "-t":
-						tokenFile = args[i + 1];
-						break;
-					case "-u":
-						username = args[i + 1];
-						break;
-					case "-e":
-						mail = args[i + 1];
-						break;
-					default:
-						PrintUsagePush();
-						return false;
-				}
-			}
+				refSpecs = "+" + refSpecs;
 
-			if (InvalidArguments(dir, username, tokenFile))
+			IDictionary<string, string> argsDictionary = ArgumentsHandler(args);
+
+			if (InvalidArguments(argsDictionary[RootPath], argsDictionary[Username], argsDictionary[TokenPath]))
 			{
 				PrintUsagePush();
 				return false;
 			}
 
-			Repository repository = new(dir);
+			Repository repository = new(argsDictionary[RootPath]);
 
 			PushOptions opt = new PushOptions
 			{
 				CredentialsProvider = (_url, _user, _cred) =>
-					new UsernamePasswordCredentials { Username = username, Password = GetToken(tokenFile) }
+					new UsernamePasswordCredentials { Username = argsDictionary[Username], Password = GetToken(argsDictionary[TokenPath]) }
 			};
 
 			// TODO: Careful with hardcoded values
@@ -129,93 +116,19 @@ namespace RedirectFilesUtilities
 
 		public static bool CommitFileOrDirectory(string[] args)
 		{
-			string filepath = "", rootPath = "", username = "", message = "", email = "";
+			IDictionary<string, string> arguments = ArgumentsHandler(args);
 
-			for (int i = 1; i < args.Length; i += 2)
-			{
-				switch (args[i])
-				{
-					case "-f":
-						filepath = args[i + 1];
-						break;
-					case "-d":
-						rootPath = args[i + 1];
-						break;
-					case "-u":
-						username = args[i + 1];
-						break;
-					case "-e":
-						email = args[i + 1];
-						break;
-					case "-m":
-						message = args[i + 1];
-						break;
-					default:
-						PrintUsageCommit();
-						return false;
-				}
-			}
-
-			if (InvalidArguments(filepath, rootPath, username, message, email))
+			if (InvalidArguments(arguments[Filepath], arguments[RootPath], arguments[Username], arguments[Message], arguments[Email]))
 			{
 				PrintUsageCommit();
 				return false;
 			}
 
-			if (File.Exists(Path.Combine(rootPath, filepath)))
+			if (File.Exists(Path.Combine(arguments[RootPath], arguments[Filepath])))
 			{
-				return CommitFile(filepath, rootPath, username, email, message);
+				return CommitFile(arguments[Filepath], arguments[RootPath], arguments[Username], arguments[Email], arguments[Message]);
 			}
-			return CommitDirectory(filepath, rootPath, username, email, message);
-		}
-
-		// Obsolete?
-		public static bool CommitFile(string[] args)
-		{
-			string filepath = "", rootPath = "", username = "", message = "", email = "";
-
-			for (int i = 1; i < args.Length; i += 2)
-			{
-				switch (args[i])
-				{
-					case "-f":
-						filepath = args[i + 1];
-						break;
-					case "-d":
-						rootPath = args[i + 1];
-						break;
-					case "-u":
-						username = args[i + 1];
-						break;
-					case "-e":
-						email = args[i + 1];
-						break;
-					case "-m":
-						message = args[i + 1];
-						break;
-					default:
-						PrintUsageCommit();
-						return false;
-				}
-			}
-
-			if (InvalidArguments(filepath, rootPath, username, message, email))
-			{
-				PrintUsageCommit();
-				return false;
-			}
-
-			Repository repository = new(rootPath);
-			repository.Index.Add(filepath);
-			repository.Index.Write();
-
-			RemoveFromStaging(repository); // Removing unavailable files from staging
-			Commands.Stage(repository, filepath);
-
-			Signature author = new(username, email, DateTimeOffset.Now);
-			Commit commit = repository.Commit(message, author, author);
-
-			return true;
+			return CommitDirectory(arguments[Filepath], arguments[RootPath], arguments[Username], arguments[Email], arguments[Message]);
 		}
 
 		public static bool CommitDirectory(string dirpath, string rootPath, string username, string email, string message)
@@ -347,43 +260,21 @@ namespace RedirectFilesUtilities
 
 		public static bool OpenFileFromRedirect(string[] args)
 		{
-			// TODO: Careful with hardcoded values
-			string redirPath = "", 
-				rootPath = "", 
-				branchName = "master";
+			IDictionary<string, string> arguments = ArgumentsHandler(args);
 
-			for (int i = 1; i < args.Length; i += 2)
-			{
-				switch (args[i])
-				{
-					case "-r":
-						redirPath = args[i + 1];
-						break;
-					case "-d":
-						rootPath = args[i + 1];
-						break;
-					case "-b":
-						branchName = args[i + 1];
-						break;
-					default:
-						PrintUsageOpenFile();
-						return false;
-				}
-			}
-
-			if (InvalidArguments(redirPath, rootPath))
+			if (InvalidArguments(arguments[RedirPath], arguments[RootPath]))
 			{
 				PrintUsageOpenFile();
 				return false;
 			}
 
-			Repository repository = new(rootPath);
-			using StreamReader sr = new(redirPath);
+			Repository repository = new(arguments[RootPath]);
+			using StreamReader sr = new(arguments[RedirPath]);
 			try
 			{
 				string? path = sr.ReadLine();
 				if (path == null) return false;
-				string realPath = Path.Combine(rootPath, path);
+				string realPath = Path.Combine(arguments[RootPath], path);
 				if (File.Exists(realPath))
 				{
 					OpenFile(realPath);
@@ -396,8 +287,8 @@ namespace RedirectFilesUtilities
 				{
 					CheckoutNotifyFlags = CheckoutNotifyFlags.Conflict
 				};
-				
-				repository.CheckoutPaths(branchName, ls, co);
+
+				repository.CheckoutPaths(arguments[BranchName], ls, co);
 
 				OpenFile(realPath);
 			}
@@ -419,41 +310,16 @@ namespace RedirectFilesUtilities
 
 		public static bool UpdateRepository(string[] args)
 		{
-			string rootPath = "",
-				username = "",
-				mail = "",
-				tokenPath = "";
+			IDictionary<string, string> arguments = ArgumentsHandler(args);
 
-			for (int i = 1; i < args.Length; i += 2)
-			{
-				switch (args[i])
-				{
-					case "-d":
-						rootPath = args[i + 1];
-						break;
-					case "-u":
-						username = args[i + 1];
-						break;
-					case "-e":
-						mail = args[i + 1];
-						break;
-					case "-t":
-						tokenPath = args[i + 1];
-						break;
-					default:
-						PrintUsageUpdate();
-						return false;
-				}
-			}
-
-			if (InvalidArguments(rootPath, username, mail, tokenPath))
+			if (InvalidArguments(arguments[RootPath], arguments[Username], arguments[Email], arguments[TokenPath]))
 			{
 				PrintUsageUpdate();
 				return false;
 			}
 
-			Repository repository = new Repository(rootPath);
-			return PullFiles(tokenPath, username, mail, repository);
+			Repository repository = new Repository(arguments[RootPath]);
+			return PullFiles(arguments[TokenPath], arguments[Username], arguments[Email], repository);
 		}
 
 		public static bool MergeSolver(string[] args)
@@ -501,67 +367,36 @@ namespace RedirectFilesUtilities
 				tokenPath = "",
 				refSpecs = @"refs/heads/master";
 
-			for (int i = 1; i < args.Length; i += 2)
-			{
-				switch (args[i])
-				{
-					case "-d":
-						rootPath = args[i + 1];
-						break;
-					case "-f":
-						filepath = args[i + 1];
-						break;
-					case "-m":
-						message = args[i + 1];
-						break;
-					case "-u":
-						username = args[i + 1];
-						break;
-					case "-e":
-						email = args[i + 1];
-						break;
-					case "-t":
-						tokenPath = args[i + 1];
-						break;
-					case "-r":
-						redirPath = args[i + 1];
-						break;
-					default:
-						PrintUsageAddFile();
-						return false;
-				}
-			}
+			IDictionary<string, string> arguments = ArgumentsHandler(args);
 
-			Repository repository = new(rootPath);
-			repository.Index.Add(filepath);
+			Repository repository = new(arguments[RootPath]);
+			repository.Index.Add(arguments[Filepath]);
 			repository.Index.Write();
 
-			Repository redirRepository = new(redirPath);
-			string redirFile = Path.Combine(redirPath, filepath) + ".redir";
+			Repository redirRepository = new(arguments[RedirPath]);
+			string redirFile = Path.Combine(arguments[RedirPath], arguments[Filepath]) + ".redir";
 
-			/*if (!File.Exists(redirFile))
-				File.Create(redirFile);
-
-			File.WriteAllText(redirFile, filepath);*/
 			using (FileStream fs = File.Create(redirFile))
 			{
-				byte[] buff = new UTF8Encoding(true).GetBytes(filepath);
+				byte[] buff = new UTF8Encoding(true).GetBytes(arguments[Filepath]);
 				fs.Write(buff);
 				fs.Close();
 			}
 
-			string relativePath = redirFile.Replace(redirPath + "\\", "");
+			string relativePath = redirFile.Replace(arguments[RedirPath] + "\\", "");
 
 			redirRepository.Index.Add(relativePath);
 			redirRepository.Index.Write();
 
-			Signature author = new Signature(username, email, DateTimeOffset.Now);
-			message += " -- " + filepath;
+			Signature author = new Signature(arguments[Username], arguments[Email], DateTimeOffset.Now);
+			message += " -- " + arguments[Filepath];
 			PushOptions opt = new PushOptions
 			{
 				CredentialsProvider = (_url, _user, _cred) =>
-					new UsernamePasswordCredentials { Username = username, Password = GetToken(tokenPath) }
+					new UsernamePasswordCredentials { Username = arguments[Username], Password = GetToken(arguments[TokenPath]) }
 			};
+
+			message = arguments[Message] == "" ? message : arguments[Message]; 
 
 			redirRepository.Commit(message, author, author);
 			redirRepository.Network.Push(FetchRemote("", redirRepository), refSpecs, opt);
