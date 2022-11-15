@@ -105,6 +105,15 @@ namespace RedirectFilesUtilities
 							  "\t-d <path>	: path to the root of real project\n");
 		}
 
+		public static void PrintUsageAddFile()
+		{
+			Console.WriteLine("Add a file to the repository (File still need to be committed and eventually pushed");
+			Console.WriteLine("-add			: flag to add a file to the repository\n" +
+							  "\t-f <path>	: (relative) path to the file to add\n" +
+							  "\t-d <path>	: path to the root of real project\n" +
+							  "\t-rd <path>	: path to the root of redirect project\n");
+		}
+
 		public static void PrintUsageConflicts(ConflictCollection conflicts)
 		{
 			Console.WriteLine("Some Conflicts need resolution");

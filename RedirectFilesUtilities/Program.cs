@@ -15,11 +15,15 @@ namespace RedirectFilesUtilities
 		{
 			if (args.Length <= 2)
 			{
-				Console.WriteLine("No arguments");
+				Console.WriteLine("No arguments\n");
 				PrintUsageOpenFile();
 				PrintUsageCommit();
 				PrintUsagePush();
-				return;
+				PrintUsageForcePush();
+				PrintUsageUpdate();
+				PrintUsageMerge();
+				PrintUsageAddFile();
+				Environment.Exit(-1);
 			}
 
 			string actionType = args[0];
@@ -69,12 +73,22 @@ namespace RedirectFilesUtilities
 						Environment.Exit(-1);
 					}
 					break;
+				case "-add":
+					if (!AddFile(args))
+					{
+						Console.WriteLine("Failed to add file to the repository");
+						Environment.Exit(-1);
+					}
+
+					break;
 				default:
 					PrintUsageOpenFile();
 					PrintUsageCommit();
 					PrintUsagePush();
+					PrintUsageForcePush();
 					PrintUsageUpdate();
 					PrintUsageMerge();
+					PrintUsageAddFile();
 					Environment.Exit(-1);
 					break;
 			}

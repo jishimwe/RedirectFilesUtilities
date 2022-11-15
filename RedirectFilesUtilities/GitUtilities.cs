@@ -10,8 +10,59 @@ using static RedirectFilesUtilities.UsagePrinter;
 
 namespace RedirectFilesUtilities
 {
-    public static class GitUtilities
+	public static class GitUtilities
     {
+		// TODO: Finish arguments handler (not a priority)
+	    private static IDictionary<string, string> ArgumentsHandler(string[] args)
+	    {
+			IDictionary<string, string> result = new Dictionary<string, string>();
+			for (int i = 1; i < args.Length; i += 2)
+			{
+				switch (args[i])
+				{
+					case "-d":
+						AddToDictionary(result, "rootPath", args[i + 1]);
+						break;
+					case "-t":
+						AddToDictionary(result, "tokePath", args[i + 1]);
+						break;
+					case "-u":
+						AddToDictionary(result, "username", args[i + 1]);
+						break;
+					case "-e":
+						AddToDictionary(result, "email", args[i + 1]);
+						break;
+					case "-f":
+						AddToDictionary(result, "filepath", args[i + 1]);
+						break;
+					case "-m":
+						AddToDictionary(result, "message", args[i + 1]);
+						break;
+					case "-r":
+						AddToDictionary(result, "redirPath", args[i + 1]);
+						break;
+					case "-b":
+						AddToDictionary(result, "branchName", args[i + 1]);
+						break;
+					default:
+						Console.WriteLine("Unrecognized argument: " + args[i] + "\t" + args[i + 1]);
+						break;
+				}
+			}
+			throw new NotImplementedException();
+	    }
+
+	    private static bool AddToDictionary(IDictionary<string, string> argsDictionary, string key, string val)
+	    {
+		    if (argsDictionary.ContainsKey(key))
+		    {
+				argsDictionary[key] = val;
+				return true;
+		    }
+			argsDictionary.Add(key, val);
+			return true;
+	    }
+
 		public static bool PushCommit(string[] args, bool force = false)
 		{
 			string dir = "", username = "", tokenFile = "",
@@ -405,21 +456,11 @@ namespace RedirectFilesUtilities
 			return PullFiles(tokenPath, username, mail, repository);
 		}
 
-		// Obsolete?
-		private static bool MergeSolver(Repository repository, string mergeOptions = "3")
-		{
-			MergeOptions mo = SetMergeOptions();
-			Signature signature = new Signature("jishimwe", "jeanpaulishimwe@gmail.com", DateTimeOffset.Now);
-			repository.MergeFetchedRefs(signature, mo);
-
-			return true;
-		}
-
 		public static bool MergeSolver(string[] args)
 		{
 			string rootPath = "",
-				username = "jishimwe",
-				mail = "jeanpaulishimwe@gmail.com",
+				username = "",
+				mail = "",
 				mergeOptions = args[1];
 
 			for (int i = 2; i < args.Length; i += 2)
@@ -446,6 +487,84 @@ namespace RedirectFilesUtilities
 			Signature signature = new Signature(username, mail, DateTimeOffset.Now);
 
 			repository.MergeFetchedRefs(signature, mo);
+
+			return true;
+		}
+
+		public static bool AddFile(string[] args)
+		{
+			string rootPath = "", filepath = "",
+				redirPath = "",
+				message = "Adding file",
+				username = "jishimwe",
+				email = "jeanpaulishmwe@gmail.com",
+				tokenPath = "",
+				refSpecs = @"refs/heads/master";
+
+			for (int i = 1; i < args.Length; i += 2)
+			{
+				switch (args[i])
+				{
+					case "-d":
+						rootPath = args[i + 1];
+						break;
+					case "-f":
+						filepath = args[i + 1];
+						break;
+					case "-m":
+						message = args[i + 1];
+						break;
+					case "-u":
+						username = args[i + 1];
+						break;
+					case "-e":
+						email = args[i + 1];
+						break;
+					case "-t":
+						tokenPath = args[i + 1];
+						break;
+					case "-r":
+						redirPath = args[i + 1];
+						break;
+					default:
+						PrintUsageAddFile();
+						return false;
+				}
+			}
+
+			Repository repository = new(rootPath);
+			repository.Index.Add(filepath);
+			repository.Index.Write();
+
+			Repository redirRepository = new(redirPath);
+			string redirFile = Path.Combine(redirPath, filepath) + ".redir";
+
+			/*if (!File.Exists(redirFile))
+				File.Create(redirFile);
+
+			File.WriteAllText(redirFile, filepath);*/
+			using (FileStream fs = File.Create(redirFile))
+			{
+				byte[] buff = new UTF8Encoding(true).GetBytes(filepath);
+				fs.Write(buff);
+				fs.Close();
+			}
+
+			string relativePath = redirFile.Replace(redirPath + "\\", "");
+
+			redirRepository.Index.Add(relativePath);
+			redirRepository.Index.Write();
+
+			Signature author = new Signature(username, email, DateTimeOffset.Now);
+			message += " -- " + filepath;
+			PushOptions opt = new PushOptions
+			{
+				CredentialsProvider = (_url, _user, _cred) =>
+					new UsernamePasswordCredentials { Username = username, Password = GetToken(tokenPath) }
+			};
+
+			redirRepository.Commit(message, author, author);
+			redirRepository.Network.Push(FetchRemote("", redirRepository), refSpecs, opt);
 
 			return true;
 		}
@@ -503,22 +622,6 @@ namespace RedirectFilesUtilities
 				Environment.Exit(-1);
 				return null;
 			}
-		}
-
-		// Obsolete?
-		private static string ReadRedirFile(string? filepath = null)
-		{
-			if (filepath == null)
-			{
-				Console.WriteLine("Enter the path of a .redir file");
-				filepath = Console.ReadLine();
-			}
-
-			if (filepath == null)
-				return "no file";
-			using StreamReader sr = new(filepath);
-			string read = sr.ReadToEnd();
-			return read ?? "no data";
 		}
 
 		/*
