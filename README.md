@@ -23,7 +23,7 @@ Redirect files are files tha contains information on where to find the *real* fi
 Here are the function already implemented and how to use them.
 
 - Open File From Redirect: 
-A function that will find the file indicated by a redirect file and download it from the remote repository. \
+A function that will find the file indicated by a *redirect* file and download it from the remote repository. \
 To use it, launch the program with the folowing arguments:
 ```
 -open		: flag to launch the opening a file
@@ -32,6 +32,19 @@ To use it, launch the program with the folowing arguments:
 -b <branch>	: the name of the branch
 ```
 
+- Add a file to the repository:
+This function will add a file to the staging area. The file will still need to be committed and pushed.
+This function will also add a corresponding file to the *redirect* repository, this file will be commited and pushed
+automatically to the *redirect* repository.
+```
+-add		: flag to launch the addition of a file to the repository
+-d <path>	: the path to the root of real project
+-f <path>	: path to the file to add
+-r <path>	: the path to the root of the redirect project
+-u <user>	: the git user username
+-e <mail>	: the git user email address
+-t <path>	: flag to give a token with a path to a file containing the token
+```
 
 - Commit File or Directory: 
 A function that will commit the changes done to file \
@@ -98,3 +111,5 @@ ___
 - [x] Pushing a directory
 - [ ] Conflict solving
 - [x] Merging
+- [x] Add a file
+- [ ] Remove a file
