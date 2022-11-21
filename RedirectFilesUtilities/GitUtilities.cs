@@ -104,8 +104,10 @@ namespace RedirectFilesUtilities
 			{
 				Console.WriteLine(nfe.Message);
 				Console.WriteLine("Some files may need updating, try updating before pushing");
+				return false;
 			}
 
+			Console.WriteLine("Push executed");
 			return true;
 		}
 
@@ -141,6 +143,9 @@ namespace RedirectFilesUtilities
 			Signature author = new(username, email, DateTimeOffset.Now);
 			Commit commit = repository.Commit(message, author, author);
 
+			Console.WriteLine("Directory committed " + dirpath);
+			Console.WriteLine(commit);
+
 			return true;
 		}
 
@@ -169,6 +174,7 @@ namespace RedirectFilesUtilities
 			catch (Exception e)
 			{
 				Console.WriteLine(e.Message);
+				return false;
 			}
 			return true;
 		}
@@ -186,12 +192,16 @@ namespace RedirectFilesUtilities
 			try
 			{
 				Commit commit = repository.Commit(message, author, author);
+
+				Console.WriteLine("File commited " + filepath);
+				Console.WriteLine(commit);
 			}
 			catch (Exception e)
 			{
 				Console.WriteLine(e);
 				return false;
 			}
+
 			return true;
 		}
 
@@ -255,6 +265,7 @@ namespace RedirectFilesUtilities
 				}
 				return false;
 			}
+			Console.WriteLine("Pull finished -  Repository updated");
 			return true;
 		}
 
@@ -283,11 +294,11 @@ namespace RedirectFilesUtilities
 
 				List<string> ls = new() { path };
 
-				CheckoutOptions co = new CheckoutOptions()
-				{
-					CheckoutNotifyFlags = CheckoutNotifyFlags.Conflict
-				};
-
+				CheckoutOptions co = new CheckoutOptions();
+				//{
+				//	CheckoutNotifyFlags = CheckoutNotifyFlags.Conflict
+				//};
+				co.CheckoutModifiers = CheckoutModifiers.Force;
 				repository.CheckoutPaths(arguments[BranchName], ls, co);
 
 				OpenFile(realPath);
@@ -354,6 +365,8 @@ namespace RedirectFilesUtilities
 
 			repository.MergeFetchedRefs(signature, mo);
 
+			Console.WriteLine("Merge solved " + mergeOptions);
+
 			return true;
 		}
 
@@ -396,10 +409,12 @@ namespace RedirectFilesUtilities
 					new UsernamePasswordCredentials { Username = arguments[Username], Password = GetToken(arguments[TokenPath]) }
 			};
 
-			message = arguments[Message] == "" ? message : arguments[Message]; 
+			message = !arguments.ContainsKey(Message) ? message : arguments[Message]; 
 
 			redirRepository.Commit(message, author, author);
 			redirRepository.Network.Push(FetchRemote("", redirRepository), refSpecs, opt);
+
+			Console.WriteLine("File added " + filepath);
 
 			return true;
 		}
@@ -487,7 +502,7 @@ namespace RedirectFilesUtilities
 					continue;
 
 				Commands.Unstage(repository, item.FilePath);
-				Console.WriteLine(item.FilePath + "\t" + item.State + "\t removed from staging");
+				//Console.WriteLine(item.FilePath + "\t" + item.State + "\t removed from staging");
 			}
 			Console.WriteLine();
 		}
