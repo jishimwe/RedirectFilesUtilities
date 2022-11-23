@@ -2,8 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Mime;
+using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using static RedirectFilesUtilities.UsagePrinter;
@@ -210,8 +214,15 @@ namespace RedirectFilesUtilities
 			// TODO: Remove hardcoded values
 			string msg = "fetching remote file " + filepath;
 			Remote remote = repository.Network.Remotes[remoteName];
+
+			var fetchRefSpecs = remote.FetchRefSpecs;
+
 			var refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
-			Commands.Fetch(repository, remote.Name, refSpecs, null, msg);
+			string s = remote.FetchRefSpecs.Select(x => x.Source).First() + ":" +
+			           (remote.FetchRefSpecs.Select(x => x.Destination).First());
+			var refSpecsEnu = new List<string>() { s };
+			
+			Commands.Fetch(repository, remote.Name, refSpecsEnu, null, msg);
 
 			CheckoutOptions co = new CheckoutOptions();
 			if(filepath != "")
@@ -222,8 +233,6 @@ namespace RedirectFilesUtilities
 
 		private static bool PullFiles(string tokenFile, string username, string mail, Repository repository)
 		{
-			string token = GetToken(tokenFile);
-
 			FetchOptions fo = new FetchOptions
 			{
 				CredentialsProvider = new CredentialsHandler(
@@ -231,17 +240,39 @@ namespace RedirectFilesUtilities
 						new UsernamePasswordCredentials()
 						{
 							Username = username,
-							Password = token
+							Password = GetToken(tokenFile)
 						}),
+			};
+
+			CheckoutNotifyFlags cnf = CheckoutNotifyFlags.Conflict | CheckoutNotifyFlags.Dirty |
+			                          CheckoutNotifyFlags.Updated |
+			                          CheckoutNotifyFlags.Untracked | CheckoutNotifyFlags.Ignored;
+
+			MergeOptions mo = new MergeOptions()
+			{
+				//CheckoutNotifyFlags = (CheckoutNotifyFlags)31,//.None,
+				CheckoutNotifyFlags = cnf,
+				OnCheckoutNotify = (string path, CheckoutNotifyFlags flags) =>
+				{
+					notifs.Add(path, flags);
+					if (flags != CheckoutNotifyFlags.Conflict)
+						return false;
+					if (flags == CheckoutNotifyFlags.Conflict || flags == CheckoutNotifyFlags.Updated)
+						return false;
+					return false;
+				},//MyCheckoutNotifyHandler(),
+				//FailOnConflict = true,
+				FileConflictStrategy = CheckoutFileConflictStrategy.Merge
 			};
 
 			PullOptions po = new()
 			{
-				FetchOptions = fo
+				FetchOptions = fo,
+				MergeOptions = mo
 			};
 
 			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
-			
+
 			Remote remote = FetchRemote("", repository);
 
 			ConflictCollection conflicts = repository.Index.Conflicts;
@@ -253,7 +284,14 @@ namespace RedirectFilesUtilities
 
 			try
 			{
-				Commands.Pull(repository, signature, po);
+				//MergeResult mr = Commands.Pull(repository, signature, po);
+				MergeResult mr = repository.MergeFetchedRefs(signature, mo);
+				//Console.WriteLine(mr);
+				if (mr.Status == MergeStatus.Conflicts)
+				{
+					Console.WriteLine("Some Conflicts need resolution");
+					Environment.Exit((-2));
+				}
 			}
 			catch (Exception e)
 			{
@@ -267,6 +305,26 @@ namespace RedirectFilesUtilities
 			}
 			Console.WriteLine("Pull finished -  Repository updated");
 			return true;
+		}
+
+		private static Dictionary<string, CheckoutNotifyFlags> notifs = new Dictionary<string, CheckoutNotifyFlags>();
+
+		private static CheckoutNotifyHandler MyCheckoutNotifyHandler()
+		{
+			CheckoutNotifyHandler cnf = delegate(string path, CheckoutNotifyFlags flags)
+			{
+				notifs.Add(path, flags);
+				throw new Exception("We are here");
+				if (flags == CheckoutNotifyFlags.Conflict)
+					Console.WriteLine(path + " has some conflicts and cannot be merged");
+				return false;
+			};
+			return cnf;
+		}
+
+		private static void ConflictHandler(string path, CheckoutNotifyFlags cnf)
+		{
+			
 		}
 
 		public static bool OpenFileFromRedirect(string[] args)
@@ -486,12 +544,16 @@ namespace RedirectFilesUtilities
 			}
 			Console.WriteLine("Opening file . . . " + filepath);
 
-			ProcessStartInfo psi = new ProcessStartInfo()
-			{
-				FileName = filepath,
-				UseShellExecute = true
-			};
-			Process.Start(psi);
+			//ProcessStartInfo psi = new ProcessStartInfo()
+			//{
+
+			//	FileName = "devenv.exe",
+			//	Arguments = "/edit " + filepath,
+			//	UseShellExecute = true
+			//};
+			//Process.Start(psi);
+
+			Console.WriteLine($"-f {filepath}");
 		}
 
 		private static void RemoveFromStaging(Repository repository)
