@@ -186,7 +186,8 @@ namespace RedirectFilesUtilities
 		public static bool CommitFile(string filepath, string rootPath, string username, string email, string message)
 		{
 			Repository repository = new(rootPath);
-			repository.Index.Add(filepath);
+			string f = filepath.Replace(rootPath + "\\", "");
+			repository.Index.Add(f);
 			repository.Index.Write();
 
 			RemoveFromStaging(repository);
@@ -542,7 +543,7 @@ namespace RedirectFilesUtilities
 				Console.WriteLine("The file at " + filepath + " doesn't exist");
 				return;
 			}
-			Console.WriteLine("Opening file . . . " + filepath);
+			//Console.WriteLine("Opening file . . . " + filepath);
 
 			//ProcessStartInfo psi = new ProcessStartInfo()
 			//{
