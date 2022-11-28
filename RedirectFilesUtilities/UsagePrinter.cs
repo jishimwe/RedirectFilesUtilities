@@ -116,8 +116,11 @@ namespace RedirectFilesUtilities
 
 		public static void PrintUsageConflicts(ConflictCollection conflicts)
 		{
-			Console.WriteLine("Some Conflicts need resolution");
-			Console.WriteLine("[" + string.Join(", -- " , conflicts) + "]\t"  + conflicts.Names);
+			//Console.WriteLine("Some Conflicts need resolution");
+			foreach (var con in conflicts)
+			{
+				Console.WriteLine("[" + string.Join(", -- ", con) + "]\t" + con.Ancestor.Path);
+			}
 		}
 	}
 }

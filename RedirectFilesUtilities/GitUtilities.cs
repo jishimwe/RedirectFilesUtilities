@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using static RedirectFilesUtilities.UsagePrinter;
+using Blob = LibGit2Sharp.Blob;
 
 namespace RedirectFilesUtilities
 {
@@ -223,7 +224,7 @@ namespace RedirectFilesUtilities
 			           (remote.FetchRefSpecs.Select(x => x.Destination).First());
 			var refSpecsEnu = new List<string>() { s };
 			
-			Commands.Fetch(repository, remote.Name, refSpecsEnu, null, msg);
+			Commands.Fetch(repository, remote.Name, refSpecs, null, msg);
 
 			CheckoutOptions co = new CheckoutOptions();
 			if(filepath != "")
@@ -257,7 +258,7 @@ namespace RedirectFilesUtilities
 				{
 					notifs.Add(path, flags);
 					if (flags != CheckoutNotifyFlags.Conflict)
-						return false;
+						return true;
 					if (flags == CheckoutNotifyFlags.Conflict || flags == CheckoutNotifyFlags.Updated)
 						return false;
 					return false;
@@ -280,6 +281,12 @@ namespace RedirectFilesUtilities
 			if (conflicts.Any())
 			{
 				PrintUsageConflicts(conflicts);
+				foreach (Conflict co in conflicts)
+				{
+					ContentChanges cc = repository.Diff.Compare(repository.Lookup<Blob>(co.Theirs.Id), repository.Lookup<Blob>(co.Ours.Id));
+					Console.WriteLine(cc.Patch);
+				}
+				
 				Environment.Exit(-2);
 			}
 
@@ -291,6 +298,16 @@ namespace RedirectFilesUtilities
 				if (mr.Status == MergeStatus.Conflicts)
 				{
 					Console.WriteLine("Some Conflicts need resolution");
+					conflicts = repository.Index.Conflicts;
+					if (conflicts.Any())
+					{
+						PrintUsageConflicts(conflicts);
+						foreach (Conflict co in conflicts)
+						{
+							ContentChanges cc = repository.Diff.Compare(repository.Lookup<Blob>(co.Theirs.Id), repository.Lookup<Blob>(co.Ours.Id));
+							Console.WriteLine(cc.Patch);
+						}
+					}
 					Environment.Exit((-2));
 				}
 			}
@@ -422,7 +439,8 @@ namespace RedirectFilesUtilities
 			MergeOptions mo = SetMergeOptions(mergeOptions);
 			Signature signature = new Signature(username, mail, DateTimeOffset.Now);
 
-			repository.MergeFetchedRefs(signature, mo);
+			MergeResult mr = repository.MergeFetchedRefs(signature, mo);
+			//MergeResult mr = repository.Merge(repository.Head, signature, mo);
 
 			Console.WriteLine("Merge solved " + mergeOptions);
 
