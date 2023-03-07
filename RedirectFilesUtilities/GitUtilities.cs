@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net.Mime;
-using System.Reflection.Metadata;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿using System.Text;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using static RedirectFilesUtilities.UsagePrinter;
@@ -27,7 +18,7 @@ namespace RedirectFilesUtilities
 			BranchName = "branchName";
 
 		// TODO: Finish arguments handler (not a priority)
-	    private static IDictionary<string, string> ArgumentsHandler(string[] args)
+	    public static IDictionary<string, string> ArgumentsHandler(string[] args)
 	    {
 			IDictionary<string, string> result = new Dictionary<string, string>();
 			for (int i = 1; i < args.Length; i += 2)
@@ -76,7 +67,18 @@ namespace RedirectFilesUtilities
 			argsDictionary.Add(key, val);
 	    }
 
-		public static bool PushCommit(string[] args, bool force = false)
+	    public static bool InvalidArguments(params string[] args)
+	    {
+		    bool res = false;
+		    foreach (string a in args)
+		    {
+			    res |= a == "";
+			    if (res) return res;
+		    }
+		    return res;
+	    }
+
+	    public static bool PushCommit(string[] args, bool force = false)
 		{
 			string refSpecs = @"refs/heads/master";
 			if (force)
@@ -498,8 +500,6 @@ namespace RedirectFilesUtilities
 
 		public static bool OpenConflictFile(string[] args)
 		{
-
-
 			throw new NotImplementedException();
 		}
 
@@ -561,16 +561,6 @@ namespace RedirectFilesUtilities
 				Console.WriteLine("The file at " + filepath + " doesn't exist");
 				return;
 			}
-			//Console.WriteLine("Opening file . . . " + filepath);
-
-			//ProcessStartInfo psi = new ProcessStartInfo()
-			//{
-
-			//	FileName = "devenv.exe",
-			//	Arguments = "/edit " + filepath,
-			//	UseShellExecute = true
-			//};
-			//Process.Start(psi);
 
 			Console.WriteLine($"-f {filepath}");
 		}

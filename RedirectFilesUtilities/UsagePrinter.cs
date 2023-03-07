@@ -1,10 +1,4 @@
 ﻿using LibGit2Sharp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RedirectFilesUtilities
 {
@@ -63,17 +57,6 @@ namespace RedirectFilesUtilities
 			Console.WriteLine("-t <path> : flag to give a token with a path to a file containing the token");
 		}
 
-		public static bool InvalidArguments(params string[] args)
-		{
-			bool res = false;
-			foreach (string a in args)
-			{
-				res |= a == "";
-				if (res) return res;
-			}
-			return res;
-		}
-
 		public static void PrintUsageMerge()
 		{
 			Console.WriteLine("Merge Options");
@@ -97,7 +80,7 @@ namespace RedirectFilesUtilities
 							  "\t-e <mail>	: the git user email address\n");
 		}
 
-		public static void OpenConflictResolutionTool()
+		public static void PrintOpenConflictResolutionTool()
 		{
 			Console.WriteLine("Opening a conflict resolution tool to resolve a conflict" +
 			                  "-conflictTool			: flag to open a conflict resolution tool\n" +
@@ -121,6 +104,14 @@ namespace RedirectFilesUtilities
 			{
 				Console.WriteLine("[" + string.Join(", -- ", con) + "]\t" + con.Ancestor.Path);
 			}
+		}
+
+		public static void PrintUsageCompiler()
+		{
+			Console.Write("To launch this tool with a compiler from YAFL, You need the following arguments :\n" +
+			              "-comp : flag to indicate that the compiler launched this tool\n" +
+			              "-conf : path to the config file containing the git information for the compiler\n" +
+			              "-file : path to the redirect file\n");
 		}
 	}
 }

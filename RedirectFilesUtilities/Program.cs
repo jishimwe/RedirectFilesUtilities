@@ -1,11 +1,6 @@
-﻿using System.Collections;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Security;
-using static RedirectFilesUtilities.UsagePrinter;
+﻿using static RedirectFilesUtilities.UsagePrinter;
 using static RedirectFilesUtilities.GitUtilities;
-using static System.Net.WebRequestMethods;
+using static RedirectFilesUtilities.CompilerUtilities;
 
 namespace RedirectFilesUtilities
 {
@@ -79,7 +74,13 @@ namespace RedirectFilesUtilities
 						Console.WriteLine("Failed to add file to the repository");
 						Environment.Exit(-1);
 					}
-
+					break;
+				case "-comp":
+					if (!CompilerCall(args))
+					{
+						Console.WriteLine("Failed to launch the compiler process");
+						Environment.Exit(-1);
+					}
 					break;
 				default:
 					PrintUsageOpenFile();
@@ -89,6 +90,7 @@ namespace RedirectFilesUtilities
 					PrintUsageUpdate();
 					PrintUsageMerge();
 					PrintUsageAddFile();
+					PrintUsageCompiler();
 					Environment.Exit(-1);
 					break;
 			}
