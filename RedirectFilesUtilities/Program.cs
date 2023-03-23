@@ -76,7 +76,7 @@ namespace RedirectFilesUtilities
 					}
 					break;
 				case "-comp":
-					if (!CompilerCall(args))
+					if (!CompilerCall(args, true))
 					{
 						Console.WriteLine("Failed to launch the compiler process");
 						Environment.Exit(-1);

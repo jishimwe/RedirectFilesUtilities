@@ -47,7 +47,8 @@ namespace RedirectFilesUtilities
 
 			return null;
 		}
-		 
+
+		// Bound to become obsolete
 		public static bool CompilerCall(string[] arguments)
 		{
 			IDictionary<string, string> args = ReadConfig(arguments[2]);
@@ -89,6 +90,47 @@ namespace RedirectFilesUtilities
 					Environment.Exit(-2);
 				}
 				Console.WriteLine(e.Message);
+			}
+			return false;
+		}
+
+		public static bool CompilerCall(string[] args, bool Redir = true)
+		{
+			IDictionary<string, string> config = ReadConfig(args[2]);
+			Repository repository = new Repository(config[RealRepositoryPath]);
+			string realPath = args[4];
+			if (File.Exists(realPath))
+			{
+				Console.WriteLine(realPath);
+				return true;
+			}
+
+			string? redirPath = Path.Combine(config[RedirectDirectoryPath], realPath);
+			if (realPath.Contains(config[RealRepositoryPath]))
+			{
+				redirPath = realPath.Substring(config[RealRepositoryPath].Length, realPath.Length - config[RealRepositoryPath].Length);
+				redirPath = config[RedirectDirectoryPath] + redirPath + ".redir";
+			}
+			else
+			{
+				redirPath += ".redir";
+			}
+			
+			Console.WriteLine("The new made up redirect path: {0}", redirPath);
+			if (File.Exists(redirPath))
+			{
+				using StreamReader sr = new StreamReader(redirPath);
+				string path = sr.ReadToEnd();
+
+				List<string> ls = new List<string>() { path };
+
+				CheckoutOptions co = new CheckoutOptions();
+				co.CheckoutModifiers = CheckoutModifiers.Force;
+				repository.CheckoutPaths(config[BranchName], ls, co);
+
+				Console.WriteLine(realPath);
+
+				return true;
 			}
 			return false;
 		}
