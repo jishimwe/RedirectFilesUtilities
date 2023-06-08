@@ -1,6 +1,5 @@
 ﻿using static RedirectFilesUtilities.UsagePrinter;
 using static RedirectFilesUtilities.GitUtilities;
-using static RedirectFilesUtilities.CompilerUtilities;
 
 namespace RedirectFilesUtilities
 {
@@ -76,9 +75,16 @@ namespace RedirectFilesUtilities
 					}
 					break;
 				case "-comp":
-					if (!CompilerCall(args, true))
+					if (!OpenFileFromReal(args))
 					{
 						Console.WriteLine("Failed to launch the compiler process");
+						Environment.Exit(-1);
+					}
+					break;
+				case "-config":
+					if (!WriteConfigFile(args))
+					{
+						Console.WriteLine("Failed to write the configuration file");
 						Environment.Exit(-1);
 					}
 					break;

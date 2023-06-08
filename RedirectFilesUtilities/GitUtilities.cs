@@ -1,56 +1,58 @@
-﻿using System.Text;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Text;
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using static RedirectFilesUtilities.UsagePrinter;
-using Blob = LibGit2Sharp.Blob;
 
 namespace RedirectFilesUtilities
 {
 	public static class GitUtilities
 	{
-		private const string RootPath = "rootPath",
-			TokenPath = "tokenPath",
-			Username = "username",
-			Email = "email",
+		private const string
 			Filepath = "filepath",
 			Message = "message",
-			RedirPath = "redirPath",
-			BranchName = "branchName";
+			ConfigFile = "configFile";
+
+		public static readonly string
+			RedirectRepositoryUrl = "RedirectRepositoryUrl",
+			RedirectDirectoryPath = "RedirectDirectoryPath",
+			RealRepositoryUrl = "RealRepositoryUrl",
+			RealRepositoryPath = "RealRepositoryPath",
+			Username = "Username",
+			Mail = "Mail",
+			TokenPath = "TokenPath",
+			UtilsPath = "UtilsPath",
+			BranchName = "BranchName",
+			RemoteName = "RemoteName",
+			RefSpecs = "RefSpecs",
+			RedirectFile = "RedirectFile",
+			MergeOptions = "MergeOptions";
 
 		// TODO: Finish arguments handler (not a priority)
-	    public static IDictionary<string, string> ArgumentsHandler(string[] args)
+		public static IDictionary<string, string> ArgumentsHandler(string[] args)
 	    {
 			IDictionary<string, string> result = new Dictionary<string, string>();
 			for (int i = 1; i < args.Length; i += 2)
 			{
 				switch (args[i])
 				{
-					case "-d":
-						AddToDictionary(result, RootPath, args[i + 1]);
-						break;
-					case "-t":
-						AddToDictionary(result, TokenPath, args[i + 1]);
-						break;
-					case "-u":
-						AddToDictionary(result, Username, args[i + 1]);
-						break;
-					case "-e":
-						AddToDictionary(result, Email, args[i + 1]);
-						break;
 					case "-f":
 						AddToDictionary(result, Filepath, args[i + 1]);
 						break;
 					case "-m":
 						AddToDictionary(result, Message, args[i + 1]);
 						break;
-					case "-r":
-						AddToDictionary(result, RedirPath, args[i + 1]);
+					case "-mo":
+						AddToDictionary(result, MergeOptions, args[i + 1]);
 						break;
-					case "-b":
-						AddToDictionary(result, BranchName, args[i + 1]);
+					case "-conf":
+						AddToDictionary(result, ConfigFile, args[i + 1]);
 						break;
 					default:
-						Console.WriteLine("Unrecognized argument: " + args[i] + "\t" + args[i + 1]);
+						Console.WriteLine("What's wrong with my arguments?");
+						Console.WriteLine("{0} |", string.Join(" |", args));
+						Console.WriteLine("Unrecognized argument: " + args[i] + " \t " + args[i + 1]);
 						break;
 				}
 			}
@@ -61,10 +63,9 @@ namespace RedirectFilesUtilities
 	    private static void AddToDictionary(IDictionary<string, string> argsDictionary, string key, string val)
 	    {
 		    if (argsDictionary.ContainsKey(key))
-		    {
 				argsDictionary[key] = val;
-		    }
-			argsDictionary.Add(key, val);
+		    else
+				argsDictionary.Add(key, val);
 	    }
 
 	    public static bool InvalidArguments(params string[] args)
@@ -78,87 +79,56 @@ namespace RedirectFilesUtilities
 		    return res;
 	    }
 
-	    public static bool PushCommit(string[] args, bool force = false)
-		{
-			string refSpecs = @"refs/heads/master";
-			if (force)
-				refSpecs = "+" + refSpecs;
-
-			IDictionary<string, string> argsDictionary = ArgumentsHandler(args);
-
-			if (InvalidArguments(argsDictionary[RootPath], argsDictionary[Username], argsDictionary[TokenPath]))
-			{
-				PrintUsagePush();
-				return false;
-			}
-
-			Repository repository = new(argsDictionary[RootPath]);
-
-			PushOptions opt = new PushOptions
-			{
-				CredentialsProvider = (_url, _user, _cred) =>
-					new UsernamePasswordCredentials { Username = argsDictionary[Username], Password = GetToken(argsDictionary[TokenPath]) }
-			};
-
-			// TODO: Careful with hardcoded values
-			Remote remote = FetchRemote("", repository);
-
-			try
-			{
-				repository.Network.Push(remote, refSpecs, opt);
-			}
-			catch (NonFastForwardException nfe)
-			{
-				Console.WriteLine(nfe.Message);
-				Console.WriteLine("Some files may need updating, try updating before pushing");
-				return false;
-			}
-
-			Console.WriteLine("Push executed");
-			return true;
-		}
-
-		public static bool ForcePush(string[] args)
-		{
-			return PushCommit(args, true);
-		}
-
 		public static bool CommitFileOrDirectory(string[] args)
 		{
 			IDictionary<string, string> arguments = ArgumentsHandler(args);
+			IDictionary<string, string>? config = ReadConfig(arguments[ConfigFile]);
+			if (config == null)
+			{
+				Console.WriteLine("Configuration file Error");
+				return false;
+			}
 
-			if (InvalidArguments(arguments[Filepath], arguments[RootPath], arguments[Username], arguments[Message], arguments[Email]))
+			if (InvalidArguments(arguments[Filepath], config[RealRepositoryPath], config[Username], arguments[Message], config[Mail]))
 			{
 				PrintUsageCommit();
 				return false;
 			}
 
-			if (File.Exists(Path.Combine(arguments[RootPath], arguments[Filepath])))
+			if (File.Exists(Path.Combine(config[RealRepositoryPath], arguments[Filepath])))
 			{
-				return CommitFile(arguments[Filepath], arguments[RootPath], arguments[Username], arguments[Email], arguments[Message]);
+				return CommitFile(arguments[Filepath], config[RealRepositoryPath], config[Username], config[Mail], arguments[Message]);
 			}
-			return CommitDirectory(arguments[Filepath], arguments[RootPath], arguments[Username], arguments[Email], arguments[Message]);
+			return CommitDirectory(arguments[Filepath], config[RealRepositoryPath], config[Username], config[Mail], arguments[Message]);
 		}
 
-		public static bool CommitDirectory(string dirpath, string rootPath, string username, string email, string message)
+		private static bool CommitDirectory(string dirpath, string rootPath, string username, string email, string message)
 		{
-			Repository repository = new Repository(rootPath);
+			Repository repository = new(rootPath);
 			RemoveFromStaging(repository);
 
-			CommitDirectoryHelper(dirpath, repository);
+			if (!CommitDirectoryHelper(dirpath, repository)) return false;
 
-			Signature author = new(username, email, DateTimeOffset.Now);
-			Commit commit = repository.Commit(message, author, author);
+			try
+			{
+				Signature author = new(username, email, DateTimeOffset.Now);
+				Commit commit = repository.Commit(message, author, author);
 
-			Console.WriteLine("Directory committed " + dirpath);
-			Console.WriteLine(commit);
+				Console.WriteLine("Directory committed " + dirpath);
+				Console.WriteLine(commit);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e.Message);
+				return false;
+			}
 
 			return true;
 		}
 
 		private static bool CommitDirectoryHelper(string dirpath, Repository repository, string? pathSoFar = null)
 		{
-			DirectoryInfo di = new DirectoryInfo(dirpath);
+			DirectoryInfo di = new(dirpath);
 
 			try
 			{
@@ -186,7 +156,7 @@ namespace RedirectFilesUtilities
 			return true;
 		}
 
-		public static bool CommitFile(string filepath, string rootPath, string username, string email, string message)
+		private static bool CommitFile(string filepath, string rootPath, string username, string email, string message)
 		{
 			Repository repository = new(rootPath);
 			string f = filepath.Replace(rootPath + "\\", "");
@@ -201,7 +171,7 @@ namespace RedirectFilesUtilities
 			{
 				Commit commit = repository.Commit(message, author, author);
 
-				Console.WriteLine("File commited " + filepath);
+				Console.WriteLine("File committed " + filepath);
 				Console.WriteLine(commit);
 			}
 			catch (Exception e)
@@ -213,8 +183,60 @@ namespace RedirectFilesUtilities
 			return true;
 		}
 
-		private static Remote FetchRemote(string filepath, Repository repository, string remoteName = "origin")
+		public static bool PushCommit(string[] args, bool force = false)
 		{
+			IDictionary<string, string> arguments = ArgumentsHandler(args);
+			IDictionary<string, string>? config = ReadConfig(arguments[ConfigFile]);
+			if (config == null)
+			{
+				Console.WriteLine("Configuration file Error");
+				return false;
+			}
+
+			string refSpecs = config[RefSpecs] == "" ? @"refs/heads/master" : config[RefSpecs];
+			if (force)
+				refSpecs = "+" + refSpecs;
+
+			if (InvalidArguments(config[RealRepositoryPath], config[Username], config[TokenPath]))
+			{
+				PrintUsagePush();
+				return false;
+			}
+
+			Repository repository = new(config[RealRepositoryPath]);
+
+			PushOptions opt = new()
+			{
+				CredentialsProvider = (_url, _user, _cred) =>
+					new UsernamePasswordCredentials { Username = config[Username], Password = GetToken(config[TokenPath]) }
+			};
+
+			// TODO: Careful with hardcoded values
+			Remote remote = FetchRemote("", repository, config[BranchName], config[RemoteName]);
+
+			try
+			{
+				repository.Network.Push(remote, refSpecs, opt);
+			}
+			catch (NonFastForwardException nfe)
+			{
+				Console.WriteLine(nfe.Message);
+				Console.WriteLine("Some files may need updating, try updating before pushing");
+				return false;
+			}
+
+			Console.WriteLine("Push executed");
+			return true;
+		}
+
+		public static bool ForcePush(string[] args)
+		{
+			return PushCommit(args, true);
+		}
+
+		private static Remote FetchRemote(string filepath, Repository repository, string branchName = "master", string remoteName = "origin")
+		{
+			Console.WriteLine("Fetching remotes |||");
 			// TODO: Remove hardcoded values
 			string msg = "fetching remote file " + filepath;
 			Remote remote = repository.Network.Remotes[remoteName];
@@ -228,56 +250,47 @@ namespace RedirectFilesUtilities
 			
 			Commands.Fetch(repository, remote.Name, refSpecs, null, msg);
 
-			CheckoutOptions co = new CheckoutOptions();
+			CheckoutOptions co = new();
 			if(filepath != "")
-				repository.CheckoutPaths("master", new List<string>() { filepath }, co);
+				repository.CheckoutPaths(branchName, new List<string>() { filepath }, co);
 
+			Console.WriteLine("||| Fetching remotes DONE |||");
 			return remote;
 		}
 
-		private static bool PullFiles(string tokenFile, string username, string mail, Repository repository)
+		private static bool PullFiles(string tokenFile, string username, string mail, string branchName, string remoteName, Repository repository)
 		{
-			FetchOptions fo = new FetchOptions
+			Console.WriteLine("Pulling files |||");
+			FetchOptions fo = new()
 			{
-				CredentialsProvider = new CredentialsHandler(
-					(_url, _username, _types) =>
-						new UsernamePasswordCredentials()
-						{
-							Username = username,
-							Password = GetToken(tokenFile)
-						}),
+				CredentialsProvider = (_url, _username, _types) =>
+					new UsernamePasswordCredentials()
+					{
+						Username = username,
+						Password = GetToken(tokenFile)
+					},
 			};
 
 			CheckoutNotifyFlags cnf = CheckoutNotifyFlags.Conflict | CheckoutNotifyFlags.Dirty |
 			                          CheckoutNotifyFlags.Updated |
 			                          CheckoutNotifyFlags.Untracked | CheckoutNotifyFlags.Ignored;
 
-			MergeOptions mo = new MergeOptions()
+			MergeOptions mo = new()
 			{
-				//CheckoutNotifyFlags = (CheckoutNotifyFlags)31,//.None,
 				CheckoutNotifyFlags = cnf,
 				OnCheckoutNotify = (string path, CheckoutNotifyFlags flags) =>
 				{
 					notifs.Add(path, flags);
-					if (flags != CheckoutNotifyFlags.Conflict)
-						return true;
-					if (flags == CheckoutNotifyFlags.Conflict || flags == CheckoutNotifyFlags.Updated)
-						return false;
-					return false;
-				},//MyCheckoutNotifyHandler(),
-				//FailOnConflict = true,
-				FileConflictStrategy = CheckoutFileConflictStrategy.Merge
+					return flags != CheckoutNotifyFlags.Conflict;
+				},
+				FailOnConflict = true,
+				// FileConflictStrategy = CheckoutFileConflictStrategy.Merge
 			};
 
-			PullOptions po = new()
-			{
-				FetchOptions = fo,
-				MergeOptions = mo
-			};
+			Remote remote = FetchRemote("", repository, branchName, remoteName);
 
-			Signature signature = new Signature(new Identity(username, mail), DateTimeOffset.Now);
-
-			Remote remote = FetchRemote("", repository);
+			var status = repository.RetrieveStatus();
+			Console.WriteLine("|_|-|¯| Pulling files Remote Fetched |||");
 
 			ConflictCollection conflicts = repository.Index.Conflicts;
 			if (conflicts.Any())
@@ -288,15 +301,14 @@ namespace RedirectFilesUtilities
 					ContentChanges cc = repository.Diff.Compare(repository.Lookup<Blob>(co.Theirs.Id), repository.Lookup<Blob>(co.Ours.Id));
 					Console.WriteLine(cc.Patch);
 				}
-				
+				Console.WriteLine("\nSome Conflicts need resolution");
 				Environment.Exit(-2);
 			}
-
+			Console.WriteLine("|_|-|¯| Pulling files No Conflicts? |||");
 			try
 			{
-				//MergeResult mr = Commands.Pull(repository, signature, po);
+				Signature signature = new(new Identity(username, mail), DateTimeOffset.Now);
 				MergeResult mr = repository.MergeFetchedRefs(signature, mo);
-				//Console.WriteLine(mr);
 				if (mr.Status == MergeStatus.Conflicts)
 				{
 					Console.WriteLine("Some Conflicts need resolution");
@@ -327,14 +339,13 @@ namespace RedirectFilesUtilities
 			return true;
 		}
 
-		private static Dictionary<string, CheckoutNotifyFlags> notifs = new Dictionary<string, CheckoutNotifyFlags>();
+		private static Dictionary<string, CheckoutNotifyFlags> notifs = new();
 
 		private static CheckoutNotifyHandler MyCheckoutNotifyHandler()
 		{
 			CheckoutNotifyHandler cnf = delegate(string path, CheckoutNotifyFlags flags)
 			{
 				notifs.Add(path, flags);
-				throw new Exception("We are here");
 				if (flags == CheckoutNotifyFlags.Conflict)
 					Console.WriteLine(path + " has some conflicts and cannot be merged");
 				return false;
@@ -342,44 +353,50 @@ namespace RedirectFilesUtilities
 			return cnf;
 		}
 
-		private static void ConflictHandler(string path, CheckoutNotifyFlags cnf)
-		{
-			
-		}
-
 		public static bool OpenFileFromRedirect(string[] args)
 		{
 			IDictionary<string, string> arguments = ArgumentsHandler(args);
+			IDictionary<string, string>? config = ReadConfig(arguments[ConfigFile]);
+			if (config == null)
+			{
+				Console.WriteLine("Configuration file Error");
+				return false;
+			}
 
-			if (InvalidArguments(arguments[RedirPath], arguments[RootPath]))
+			if (InvalidArguments(config[RedirectDirectoryPath], config[RealRepositoryPath]))
 			{
 				PrintUsageOpenFile();
 				return false;
 			}
 
-			Repository repository = new(arguments[RootPath]);
-			using StreamReader sr = new(arguments[RedirPath]);
+			Repository repository = new(config[RealRepositoryPath]);
+			using StreamReader sr = new(arguments[Filepath]);
 			try
 			{
 				string? path = sr.ReadLine();
 				if (path == null) return false;
-				string realPath = Path.Combine(arguments[RootPath], path);
+				string realPath = Path.Combine(config[RealRepositoryPath], path);
 				if (File.Exists(realPath))
 				{
-					OpenFile(realPath);
+					Console.WriteLine($"-f {realPath}");
 					return true;
 				}
 
 				List<string> ls = new() { path };
 
-				CheckoutOptions co = new CheckoutOptions();
-				//{
-				//	CheckoutNotifyFlags = CheckoutNotifyFlags.Conflict
-				//};
-				co.CheckoutModifiers = CheckoutModifiers.Force;
-				repository.CheckoutPaths(arguments[BranchName], ls, co);
+				CheckoutOptions co = new()
+				{
+					CheckoutModifiers = CheckoutModifiers.Force
+				};
+				repository.CheckoutPaths(config[BranchName], ls, co);
 
-				OpenFile(realPath);
+				if (!File.Exists(realPath))
+				{
+					Console.WriteLine("The file at " + realPath + " doesn't exist");
+					return false;
+				}
+
+				Console.WriteLine($"-f {realPath}");
 			}
 			catch (Exception e)
 			{
@@ -392,23 +409,200 @@ namespace RedirectFilesUtilities
 					Environment.Exit(-2);
 				}				
 				Console.WriteLine(e.Message);
+				return false;
 			}
 
 			return true;
 		}
 
+		// TODO: A Config file handler (not a priority)
+		public static bool WriteConfigFile(string[] args)
+		{
+			IDictionary<string, string> config = new Dictionary<string, string>();
+			string configPath = "redirect_config.ini";
+
+			for (int i = 1; i < args.Length; i += 2)
+			{
+				switch (args[i])
+				{
+					case "-d":
+						AddToDictionary(config, RealRepositoryPath, args[i + 1]);
+						break;
+					case "-dUrl":
+						AddToDictionary(config, RealRepositoryUrl, args[i + 1]);
+						break;
+					case "-r":
+						AddToDictionary(config, RedirectDirectoryPath, args[i + 1]);
+						break;
+					case "-rUrl":
+						AddToDictionary(config, RedirectRepositoryUrl, args[i + 1]);
+						break;
+					case "-u":
+						AddToDictionary(config, Username, args[i + 1]);
+						break;
+					case "-e":
+						AddToDictionary(config, Mail, args[i + 1]);
+						break;
+					case "-t":
+						AddToDictionary(config, TokenPath, args[i + 1]);
+						break;
+					case "-b":
+						AddToDictionary(config, BranchName, args[i + 1]);
+						break;
+					case "-rm":
+						AddToDictionary(config, RemoteName, args[i + 1]);
+						break;
+					case "-rf":
+						AddToDictionary(config, RefSpecs, args[i + 1]);
+						break;
+					case "-ut":
+						AddToDictionary(config, UtilsPath, args[i + 1]);
+						break;
+					case "-conf":
+						configPath = args[i + 1];
+						break;
+					default:
+						Console.WriteLine("What's wrong with my arguments?");
+						Console.WriteLine("{0} |", string.Join(" |", args));
+						Console.WriteLine("Unrecognized argument: " + args[i] + " \t " + args[i + 1]);
+						break;
+				}
+			}
+
+			FileInfo fi = new(configPath);
+			if (fi.Exists)
+			{
+				fi.Delete();
+			}
+
+			string[] toFile =
+			{
+				"Usage: This a redirect config file - make sure the all the values are filled",
+				"\n",
+				RedirectRepositoryUrl + " = " + config[RedirectRepositoryUrl],
+				RedirectDirectoryPath + " = " + config[RedirectDirectoryPath],
+				RealRepositoryUrl + " = " + config[RealRepositoryUrl],
+				RealRepositoryPath + " = " + config[RealRepositoryPath],
+				Username + " = " + config[Username],
+				Mail + " = " + config[Mail],
+				TokenPath + " = " + config[TokenPath],
+				UtilsPath + " = " + config[UtilsPath],
+				"\n",
+				"[Optional]",
+				BranchName + " = " + config[BranchName],
+				RemoteName + " = " + config[RemoteName],
+				RefSpecs + " = " + config[RefSpecs]
+			};
+			try
+			{
+				File.WriteAllText(configPath, string.Join("\n", toFile));
+				return true;
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("Error while writing the configuration file");
+				PrintUsageWriteConfigFile();
+				Console.WriteLine(e);
+				Environment.Exit(-1);
+			}
+			
+			return false;
+		}
+
+		public static IDictionary<string, string>? ReadConfig(string configPath)
+		{
+			IDictionary<string, string> config = new Dictionary<string, string>();
+			if (File.Exists(configPath))
+			{
+				StreamReader file = new StreamReader(configPath);
+				string? ln = file.ReadLine();
+				while ((ln = file.ReadLine()) != null)
+				{
+					if (string.IsNullOrEmpty(ln) || string.IsNullOrWhiteSpace(ln))
+					{
+						continue;
+					}
+					string[] stabs = ln.Split(' ');
+					if (stabs.Length == 3)
+					{
+						config.Add(stabs[0], stabs[2]);
+					}
+				}
+				file.Close();
+				return config;
+			}
+
+			return null;
+		}
+
+		public static bool OpenFileFromReal(string[] args)
+		{
+			IDictionary<string, string>? config = ReadConfig(args[2]);
+			if (config == null)
+			{
+				Console.WriteLine("Configuration file Error");
+				return false;
+			}
+
+			Repository repository = new(config[RealRepositoryPath]);
+			string realPath = args[4];
+			if (File.Exists(realPath))
+			{
+				Console.WriteLine(realPath);
+				return true;
+			}
+
+			string? redirPath = Path.Combine(config[RedirectDirectoryPath], realPath);
+			if (realPath.Contains(config[RealRepositoryPath]))
+			{
+				redirPath = realPath.Substring(config[RealRepositoryPath].Length, realPath.Length - config[RealRepositoryPath].Length);
+				redirPath = config[RedirectDirectoryPath] + redirPath + ".redir";
+			}
+			else
+			{
+				redirPath += ".redir";
+			}
+
+			Console.WriteLine("The new made up redirect path: {0}", redirPath);
+			if (File.Exists(redirPath))
+			{
+				using StreamReader sr = new(redirPath);
+				string path = sr.ReadToEnd();
+
+				List<string> ls = new() { path };
+
+				CheckoutOptions co = new()
+				{
+					CheckoutModifiers = CheckoutModifiers.Force
+				};
+				repository.CheckoutPaths(config[BranchName], ls, co);
+
+				Console.WriteLine(realPath);
+
+				return true;
+			}
+			return false;
+		}
+
+
 		public static bool UpdateRepository(string[] args)
 		{
 			IDictionary<string, string> arguments = ArgumentsHandler(args);
+			IDictionary<string, string>? config = ReadConfig(arguments[ConfigFile]);
+			if (config == null)
+			{
+				Console.WriteLine("Configuration file Error");
+				return false;
+			}
 
-			if (InvalidArguments(arguments[RootPath], arguments[Username], arguments[Email], arguments[TokenPath]))
+			if (InvalidArguments(config[RealRepositoryPath], config[Username], config[Mail], config[TokenPath]))
 			{
 				PrintUsageUpdate();
 				return false;
 			}
 
-			Repository repository = new Repository(arguments[RootPath]);
-			return PullFiles(arguments[TokenPath], arguments[Username], arguments[Email], repository);
+			Repository repository = new(config[RealRepositoryPath]);
+			return PullFiles(config[TokenPath], config[Username], config[Mail], config[BranchName], config[RemoteName], repository);
 		}
 
 		public static bool MergeSolver(string[] args)
@@ -418,55 +612,49 @@ namespace RedirectFilesUtilities
 				mail = "",
 				mergeOptions = args[1];
 
-			for (int i = 2; i < args.Length; i += 2)
+			IDictionary<string, string> arguments = ArgumentsHandler(args);
+
+			IDictionary<string, string>? config = ReadConfig(arguments[ConfigFile]);
+			if (config == null)
 			{
-				switch (args[i])
-				{
-					case "-d":
-						rootPath = args[i + 1];
-						break;
-					case "-u":
-						username = args[i + 1];
-						break;
-					case "-e":
-						mail = args[i + 1];
-						break;
-					default:
-						PrintUsageMerge();
-						return false;
-				}
+				Console.WriteLine("There is an error with the configuration file {0}", args[3]);
+				return false;
 			}
 
-			Repository repository = new(rootPath);
-			MergeOptions mo = SetMergeOptions(mergeOptions);
-			Signature signature = new Signature(username, mail, DateTimeOffset.Now);
+			Console.WriteLine("{0} |", string.Join(" |", args));
+			// Console.WriteLine(string.Join(Environment.NewLine, config));
+			// Console.WriteLine(string.Join(Environment.NewLine, arguments));
 
-			MergeResult mr = repository.MergeFetchedRefs(signature, mo);
-			//MergeResult mr = repository.Merge(repository.Head, signature, mo);
+			Repository repository = new(config[RealRepositoryPath]);
+			MergeOptions mo = SetMergeOptions(arguments[MergeOptions]);
+			Signature signature = new(config[Username], config[Username], DateTimeOffset.Now);
+			_ = repository.MergeFetchedRefs(signature, mo);
 
-			Console.WriteLine("Merge solved " + mergeOptions);
+			Console.WriteLine("Merge solved " + arguments[MergeOptions]);
 
 			return true;
 		}
 
 		public static bool AddFile(string[] args)
 		{
-			string rootPath = "", filepath = "",
-				redirPath = "",
-				message = "Adding file",
-				username = "jishimwe",
-				email = "jeanpaulishmwe@gmail.com",
-				tokenPath = "",
-				refSpecs = @"refs/heads/master";
+			string filepath = "", message = "Adding new file";
 
 			IDictionary<string, string> arguments = ArgumentsHandler(args);
+			IDictionary<string, string>? config = ReadConfig(arguments[ConfigFile]);
+			if (config == null)
+			{
+				Console.WriteLine("Configuration file Error");
+				return false;
+			}
 
-			Repository repository = new(arguments[RootPath]);
+			string refSpecs = config[RefSpecs] == "" ? @"refs/heads/master" : config[RefSpecs];
+
+			Repository repository = new(config[RealRepositoryPath]);
 			repository.Index.Add(arguments[Filepath]);
 			repository.Index.Write();
 
-			Repository redirRepository = new(arguments[RedirPath]);
-			string redirFile = Path.Combine(arguments[RedirPath], arguments[Filepath]) + ".redir";
+			Repository redirRepository = new(config[RedirectDirectoryPath]);
+			string redirFile = Path.Combine(config[RedirectDirectoryPath], arguments[Filepath]) + ".redir";
 
 			using (FileStream fs = File.Create(redirFile))
 			{
@@ -475,23 +663,23 @@ namespace RedirectFilesUtilities
 				fs.Close();
 			}
 
-			string relativePath = redirFile.Replace(arguments[RedirPath] + "\\", "");
+			string relativePath = redirFile.Replace(config[RedirectDirectoryPath] + "\\", "");
 
 			redirRepository.Index.Add(relativePath);
 			redirRepository.Index.Write();
 
-			Signature author = new Signature(arguments[Username], arguments[Email], DateTimeOffset.Now);
+			Signature author = new(config[Username], config[Mail], DateTimeOffset.Now);
 			message += " -- " + arguments[Filepath];
-			PushOptions opt = new PushOptions
+			PushOptions opt = new()
 			{
 				CredentialsProvider = (_url, _user, _cred) =>
-					new UsernamePasswordCredentials { Username = arguments[Username], Password = GetToken(arguments[TokenPath]) }
+					new UsernamePasswordCredentials { Username = config[Username], Password = GetToken(config[TokenPath]) }
 			};
 
 			message = !arguments.ContainsKey(Message) ? message : arguments[Message]; 
 
 			redirRepository.Commit(message, author, author);
-			redirRepository.Network.Push(FetchRemote("", redirRepository), refSpecs, opt);
+			redirRepository.Network.Push(FetchRemote("", redirRepository, config[BranchName], config[RemoteName]), refSpecs, opt);
 
 			Console.WriteLine("File added " + filepath);
 
@@ -505,7 +693,7 @@ namespace RedirectFilesUtilities
 
 		private static MergeOptions SetMergeOptions(string? s = "3")
 		{
-			MergeOptions mo = new MergeOptions()
+			MergeOptions mo = new()
 			{
 				FastForwardStrategy = FastForwardStrategy.Default,
 				FileConflictStrategy = CheckoutFileConflictStrategy.Diff3,
@@ -573,7 +761,7 @@ namespace RedirectFilesUtilities
 					continue;
 
 				Commands.Unstage(repository, item.FilePath);
-				//Console.WriteLine(item.FilePath + "\t" + item.State + "\t removed from staging");
+				// Console.WriteLine(item.FilePath + "\t" + item.State + "\t removed from staging");
 			}
 			Console.WriteLine();
 		}
